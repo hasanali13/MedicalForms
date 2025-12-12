@@ -1,0 +1,352 @@
+﻿using System;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Medical.Data;
+using Medical.Models;
+using Newtonsoft.Json;
+
+namespace Medical.Controllers
+{
+    public class ViewPublicFormsController : Controller
+    {
+        private readonly MedicalContext _context;
+
+        public ViewPublicFormsController(MedicalContext context)
+        {
+            _context = context;
+        }
+
+        // GET: Create Multi-step Form
+        public IActionResult Create()
+        {
+            ViewBag.ActiveMenu = "FormBuilder";
+
+            // Get additional fields from configuration
+            var configForm = GetOrCreateConfigForm();
+            ViewBag.AdditionalFields = configForm.AdditionalFields;
+
+            return View(new ViewPublicForm());
+        }
+
+        // POST: Create Multi-step Form - FIXED
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(ViewPublicForm model)
+        {
+            try
+            {
+                if (ModelState.IsValid)
+                {
+                    model.ViewPublicFormId = Guid.NewGuid();
+                    model.CreatedAt = DateTime.UtcNow;
+
+                    // Get additional fields configuration
+                    var configForm = GetOrCreateConfigForm();
+                    var additionalFields = configForm.AdditionalFields;
+
+                    // Collect additional field values from form submission
+                    var additionalFieldsData = new Dictionary<string, AdditionalFieldValue>();
+
+                    foreach (var field in additionalFields)
+                    {
+                        var fieldName = field.FieldName;
+                        var formKey = $"AdditionalFields[{fieldName}]";
+
+                        if (Request.Form.ContainsKey(formKey))
+                        {
+                            var value = Request.Form[formKey].ToString();
+                            additionalFieldsData[fieldName] = new AdditionalFieldValue
+                            {
+                                FieldId = field.FieldId,
+                                FieldName = fieldName,
+                                DisplayName = field.DisplayName,
+                                FieldType = field.FieldType,
+                                Value = value,
+                                Step = field.Step
+                            };
+                        }
+                    }
+
+                    // Store additional fields data as JSON
+                    if (additionalFieldsData.Any())
+                    {
+                        model.AdditionalFieldsJson = JsonConvert.SerializeObject(additionalFieldsData);
+                    }
+
+                    _context.ViewPublicForm.Add(model);
+                    await _context.SaveChangesAsync();
+
+                    TempData["SuccessMessage"] = "Form submitted successfully!";
+                    return RedirectToAction(nameof(Success));
+                }
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("", $"Error submitting form: {ex.Message}");
+            }
+
+            ViewBag.ActiveMenu = "FormBuilder";
+            var reloadConfigForm = GetOrCreateConfigForm();
+            ViewBag.AdditionalFields = reloadConfigForm.AdditionalFields;
+
+            return View(model);
+        }
+
+        // Success page
+        public IActionResult Success()
+        {
+            ViewBag.ActiveMenu = "FormBuilder";
+            return View();
+        }
+
+        // AJAX: Add additional field
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddAdditionalField([FromBody] AdditionalFieldRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.DisplayName))
+                {
+                    return Json(new { success = false, message = "Field label is required" });
+                }
+
+                var configForm = GetOrCreateConfigForm();
+                var existingFields = configForm.AdditionalFields ?? new List<AdditionalField>();
+
+                // Check if field with same name already exists
+                var fieldName = GenerateFieldName(request.DisplayName.Trim());
+                if (existingFields.Any(f => f.FieldName == fieldName))
+                {
+                    return Json(new { success = false, message = "A field with this name already exists" });
+                }
+
+                // Create new field
+                var newField = new AdditionalField
+                {
+                    FieldId = Guid.NewGuid(),
+                    DisplayName = request.DisplayName.Trim(),
+                    FieldName = fieldName,
+                    FieldType = request.FieldType,
+                    Step = request.Step,
+                    Placeholder = string.IsNullOrWhiteSpace(request.Placeholder) ? null : request.Placeholder.Trim(),
+                    IsRequired = request.IsRequired,
+                    IsConditional = request.IsConditional,
+                    CreatedAt = DateTime.UtcNow,
+                    CreatedBy = User.Identity?.Name ?? "System",
+                    IsActive = true,
+                    IsDeleted = false,
+                    DisplayOrder = existingFields.Count + 1
+                };
+
+                existingFields.Add(newField);
+                configForm.AdditionalFields = existingFields;
+                configForm.FormVersion++;
+                configForm.CreatedAt = DateTime.UtcNow;
+
+                _context.ViewPublicForm.Update(configForm);
+                await _context.SaveChangesAsync();
+
+                return Json(new
+                {
+                    success = true,
+                    message = $"Field '{newField.DisplayName}' added successfully!",
+                    field = new
+                    {
+                        fieldId = newField.FieldId,
+                        displayName = newField.DisplayName,
+                        fieldName = newField.FieldName,
+                        fieldType = newField.FieldType,
+                        step = newField.Step,
+                        placeholder = newField.Placeholder,
+                        isRequired = newField.IsRequired,
+                        isConditional = newField.IsConditional,
+                        inputType = newField.InputType
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error: {ex.Message}" });
+            }
+        }
+
+        // AJAX: Delete additional field
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteAdditionalField([FromBody] DeleteFieldRequest request)
+        {
+            try
+            {
+                var configForm = GetOrCreateConfigForm();
+                var existingFields = configForm.AdditionalFields ?? new List<AdditionalField>();
+
+                var fieldToDelete = existingFields.FirstOrDefault(f => f.FieldId == request.FieldId);
+                if (fieldToDelete == null)
+                {
+                    return Json(new { success = false, message = "Field not found" });
+                }
+
+                // Instead of removing, mark as deleted
+                fieldToDelete.IsDeleted = true;
+                fieldToDelete.UpdatedAt = DateTime.UtcNow;
+
+                configForm.AdditionalFields = existingFields;
+                configForm.FormVersion++;
+                configForm.CreatedAt = DateTime.UtcNow;
+
+                _context.ViewPublicForm.Update(configForm);
+                await _context.SaveChangesAsync();
+
+                return Json(new { success = true, message = "Field deleted successfully!" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error: {ex.Message}" });
+            }
+        }
+
+        // Get all form submissions
+        public async Task<IActionResult> Index()
+        {
+            ViewBag.ActiveMenu = "ViewForms";
+            var submissions = await _context.ViewPublicForm
+                .Where(f => f.FullName != null) // Only actual submissions
+                .OrderByDescending(f => f.CreatedAt)
+                .ToListAsync();
+            return View(submissions);
+        }
+
+        // Details of a submission with additional fields
+        public async Task<IActionResult> Details(Guid? id)
+        {
+            if (id == null) return NotFound();
+
+            var form = await _context.ViewPublicForm
+                .FirstOrDefaultAsync(x => x.ViewPublicFormId == id);
+
+            if (form == null) return NotFound();
+
+            // Parse additional fields data
+            if (!string.IsNullOrEmpty(form.AdditionalFieldsJson))
+            {
+                try
+                {
+                    var additionalData = JsonConvert.DeserializeObject<Dictionary<string, AdditionalFieldValue>>(form.AdditionalFieldsJson);
+                    ViewBag.AdditionalFieldsData = additionalData;
+                }
+                catch
+                {
+                    ViewBag.AdditionalFieldsData = new Dictionary<string, AdditionalFieldValue>();
+                }
+            }
+            else
+            {
+                ViewBag.AdditionalFieldsData = new Dictionary<string, AdditionalFieldValue>();
+            }
+
+            ViewBag.ActiveMenu = "ViewForms";
+            return View(form);
+        }
+
+        // Delete a submission
+        public async Task<IActionResult> Delete(Guid? id)
+        {
+            if (id == null) return NotFound();
+
+            var form = await _context.ViewPublicForm
+                .FirstOrDefaultAsync(x => x.ViewPublicFormId == id);
+
+            if (form == null) return NotFound();
+
+            ViewBag.ActiveMenu = "ViewForms";
+            return View(form);
+        }
+
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(Guid id)
+        {
+            var form = await _context.ViewPublicForm.FindAsync(id);
+
+            if (form != null)
+            {
+                _context.ViewPublicForm.Remove(form);
+                await _context.SaveChangesAsync();
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        // Helper methods
+        private ViewPublicForm GetOrCreateConfigForm()
+        {
+            var configForm = _context.ViewPublicForm
+                .Where(f => f.FullName == null)
+                .OrderByDescending(f => f.CreatedAt)
+                .FirstOrDefault();
+
+            if (configForm == null)
+            {
+                configForm = new ViewPublicForm
+                {
+                    ViewPublicFormId = Guid.NewGuid(),
+                    CreatedAt = DateTime.UtcNow,
+                    FormVersion = 1,
+                    AdditionalFieldsJson = "[]"
+                };
+                _context.ViewPublicForm.Add(configForm);
+                _context.SaveChanges();
+            }
+
+            return configForm;
+        }
+
+        private string GenerateFieldName(string displayName)
+        {
+            var fieldName = displayName
+                .Replace(" ", "_")
+                .Replace("?", "")
+                .Replace("(", "")
+                .Replace(")", "")
+                .Replace("-", "_")
+                .Replace(".", "_")
+                .Replace(",", "_")
+                .Replace("'", "")
+                .Replace("\"", "")
+                .ToLower();
+
+            return "additional_" + fieldName;
+        }
+    }
+
+    // Request models
+    public class AdditionalFieldRequest
+    {
+        public string DisplayName { get; set; } = string.Empty;
+        public string FieldType { get; set; } = "text";
+        public int Step { get; set; } = 1;
+        public string? Placeholder { get; set; }
+        public bool IsRequired { get; set; }
+        public bool IsConditional { get; set; }
+    }
+
+    public class DeleteFieldRequest
+    {
+        public Guid FieldId { get; set; }
+    }
+
+    // Model for storing additional field values
+    public class AdditionalFieldValue
+    {
+        public Guid FieldId { get; set; }
+        public string FieldName { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string FieldType { get; set; } = "text";
+        public string Value { get; set; } = string.Empty;
+        public int Step { get; set; } = 1;
+    }
+}

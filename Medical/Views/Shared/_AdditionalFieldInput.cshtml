@@ -1,0 +1,166 @@
+﻿@model Medical.Models.AdditionalField
+
+@{
+    // Use the actual FieldName from the model
+    var fieldName = Model.FieldName;
+    var requiredAttr = Model.IsRequired ? "required" : "";
+    var placeholder = !string.IsNullOrEmpty(Model.Placeholder) ? Model.Placeholder : "";
+    var fieldId = $"field_{Model.FieldId.ToString().Replace("-", "_")}";
+}
+
+@if (!string.IsNullOrEmpty(Model.FieldType))
+{
+    switch (Model.FieldType.ToLower())
+    {
+        case "textarea":
+            <textarea id="@fieldId"
+          name="AdditionalFields[@fieldName]"
+          class="form-control"
+          placeholder="@placeholder"
+          @requiredAttr
+          rows="3"></textarea>
+            break;
+
+        case "select":
+            <select id="@fieldId"
+                    name="AdditionalFields[@fieldName]"
+                    class="form-control"
+                    @requiredAttr>
+                <option value="">Select an option...</option>
+                @if (!string.IsNullOrEmpty(Model.OptionsJson))
+                {
+                    try
+                    {
+                        var options = Newtonsoft.Json.JsonConvert.DeserializeObject<List<string>>(Model.OptionsJson);
+                        if (options != null)
+                        {
+                            foreach (var option in options)
+                            {
+                                <option value="@option">@option</option>
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        <option value="option1">Option 1</option>
+                        <option value="option2">Option 2</option>
+                        <option value="option3">Option 3</option>
+                    }
+                }
+                else
+                {
+                    <option value="option1">Option 1</option>
+                    <option value="option2">Option 2</option>
+                    <option value="option3">Option 3</option>
+                }
+            </select>
+            break;
+
+        case "checkbox":
+            <div class="form-check">
+                <input type="checkbox"
+                       id="@fieldId"
+                       name="AdditionalFields[@fieldName]"
+                       value="true"
+                       class="form-check-input"
+                       @requiredAttr />
+                <label class="form-check-label" for="@fieldId">@Model.DisplayName</label>
+            </div>
+            <!-- Hidden input for false value when checkbox is unchecked -->
+            <input type="hidden" name="AdditionalFields[@fieldName]" value="false" />
+            break;
+
+        case "radio":
+            <div>
+                @if (!string.IsNullOrEmpty(Model.OptionsJson))
+                {
+                    try
+                    {
+                        var options = Newtonsoft.Json.JsonConvert.DeserializeObject<List<string>>(Model.OptionsJson);
+                        if (options != null)
+                        {
+                            foreach (var option in options)
+                            {
+                                <div class="form-check">
+                                    <input type="radio"
+                                           id="@(fieldId)_@option.Replace(" ", "_")"
+                                           name="AdditionalFields[@fieldName]"
+                                           value="@option"
+                                           class="form-check-input"
+                                           @requiredAttr />
+                                    <label class="form-check-label" for="@(fieldId)_@option.Replace(" ", "_")">@option</label>
+                                </div>
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        <div class="text-muted">No options configured</div>
+                    }
+                }
+                else
+                {
+                    <div class="text-muted">No options configured</div>
+                }
+            </div>
+            break;
+
+        case "date":
+            <input type="date"
+                   id="@fieldId"
+                   name="AdditionalFields[@fieldName]"
+                   class="form-control"
+                   @requiredAttr />
+            break;
+
+        case "number":
+            <input type="number"
+                   id="@fieldId"
+                   name="AdditionalFields[@fieldName]"
+                   class="form-control"
+                   placeholder="@placeholder"
+                   @requiredAttr />
+            break;
+
+        case "email":
+            <input type="email"
+                   id="@fieldId"
+                   name="AdditionalFields[@fieldName]"
+                   class="form-control"
+                   placeholder="@placeholder"
+                   @requiredAttr />
+            break;
+
+        case "tel":
+            <input type="tel"
+                   id="@fieldId"
+                   name="AdditionalFields[@fieldName]"
+                   class="form-control"
+                   placeholder="@placeholder"
+                   @requiredAttr />
+            break;
+
+        default: // text (default)
+                 <input type="text"
+                        id="@fieldId"
+                        name="AdditionalFields[@fieldName]"
+                        class="form-control"
+                        placeholder="@placeholder"
+                        @requiredAttr />
+            break;
+    }
+}
+else
+{
+    <input type="text"
+           id="@fieldId"
+           name="AdditionalFields[@fieldName]"
+           class="form-control"
+           placeholder="@placeholder"
+           @requiredAttr />
+}
+
+<!-- Validation message span -->
+<span class="text-danger field-validation-valid"
+      data-valmsg-for="AdditionalFields[@fieldName]"
+      data-valmsg-replace="true"></span>

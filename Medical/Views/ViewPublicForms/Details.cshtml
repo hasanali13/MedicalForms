@@ -1,0 +1,570 @@
+﻿@model Medical.Models.ViewPublicForm
+@{
+    ViewData["Title"] = "Form Submission Details";
+    ViewBag.ActiveMenu = "ViewForms";
+
+    var additionalFieldsData = ViewBag.AdditionalFieldsData as Dictionary<string, Medical.Controllers.AdditionalFieldValue>
+        ?? new Dictionary<string, Medical.Controllers.AdditionalFieldValue>();
+}
+
+<style>
+    .field-card {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        background: #f8f9fa;
+    }
+
+    .field-section {
+        margin-bottom: 30px;
+    }
+
+    .field-section-title {
+        border-bottom: 2px solid #1F6DFF;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+        color: #1F2937;
+        font-weight: 600;
+    }
+
+    .field-row {
+        display: flex;
+        flex-wrap: wrap;
+        margin-bottom: 15px;
+        padding: 10px;
+        background: white;
+        border-radius: 6px;
+        border-left: 4px solid #1F6DFF;
+    }
+
+    .field-label {
+        flex: 0 0 200px;
+        font-weight: 600;
+        color: #374151;
+        padding-right: 15px;
+    }
+
+    .field-value {
+        flex: 1;
+        color: #4B5563;
+    }
+
+    .empty-field {
+        color: #9CA3AF;
+        font-style: italic;
+    }
+
+    .badge-step {
+        background: #1F6DFF;
+        color: white;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        margin-left: 8px;
+    }
+</style>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Form Submission Details</h2>
+        <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-file-medical me-2"></i>
+                Medical Form Submission
+                <small class="float-end">Submitted: @Model.CreatedAt.ToString("yyyy-MM-dd HH:mm")</small>
+            </h5>
+        </div>
+
+        <div class="card-body">
+            <!-- STEP 1: Personal Information -->
+            <div class="field-section">
+                <h4 class="field-section-title">
+                    Step 1: Personal Information
+                    <span class="badge-step">Step 1</span>
+                </h4>
+
+                <div class="row">
+                    <!-- Original Fields - Step 1 -->
+                    <div class="col-md-6">
+                        <div class="field-row">
+                            <div class="field-label">Full Name</div>
+                            <div class="field-value">
+                                @if (!string.IsNullOrEmpty(Model.FullName))
+                                {
+                                    @Model.FullName
+                                }
+                                else
+                                {
+                                    <span class="empty-field">Not provided</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="field-row">
+                            <div class="field-label">Age</div>
+                            <div class="field-value">
+                                @if (Model.Age.HasValue)
+                                {
+                                    @Model.Age
+                                }
+                                else
+                                {
+                                    <span class="empty-field">Not provided</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="field-row">
+                            <div class="field-label">Gender</div>
+                            <div class="field-value">
+                                @if (!string.IsNullOrEmpty(Model.Gender))
+                                {
+                                    @Model.Gender
+                                }
+                                else
+                                {
+                                    <span class="empty-field">Not provided</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="field-row">
+                            <div class="field-label">Date of Birth</div>
+                            <div class="field-value">
+                                @if (Model.DateOfBirth.HasValue)
+                                {
+                                    @Model.DateOfBirth.Value.ToString("yyyy-MM-dd")
+                                }
+                                else
+                                {
+                                    <span class="empty-field">Not provided</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Additional Fields - Step 1 -->
+                    @foreach (var field in additionalFieldsData.Values.Where(f => f.Step == 1))
+                    {
+                        <div class="col-md-6">
+                            <div class="field-row">
+                                <div class="field-label">
+                                    @field.DisplayName
+                                    <small class="text-muted d-block">@field.FieldType</small>
+                                </div>
+                                <div class="field-value">
+                                    @if (!string.IsNullOrEmpty(field.Value))
+                                    {
+                                        if (field.FieldType.ToLower() == "checkbox")
+                                        {
+                                            @(field.Value == "true" ? "✓ Yes" : "✗ No")
+                                        }
+                                        else if (field.FieldType.ToLower() == "date" && DateTime.TryParse(field.Value, out DateTime dateValue))
+                                        {
+                                            @dateValue.ToString("yyyy-MM-dd")
+                                        }
+                                        else
+                                        {
+                                            @field.Value
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="empty-field">Not provided</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- STEP 2: Health Details -->
+            <div class="field-section">
+                <h4 class="field-section-title">
+                    Step 2: Health Details
+                    <span class="badge-step">Step 2</span>
+                </h4>
+
+                <div class="row">
+                    <!-- Original Fields - Step 2 -->
+                    <div class="col-md-6">
+                        <div class="field-row">
+                            <div class="field-label">Has Allergies</div>
+                            <div class="field-value">
+                                @if (Model.HasAllergies.HasValue)
+                                {
+                                    @(Model.HasAllergies.Value ? "Yes" : "No")
+                                }
+                                else
+                                {
+                                    <span class="empty-field">Not provided</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="field-row">
+                            <div class="field-label">Allergy Description</div>
+                            <div class="field-value">
+                                @if (!string.IsNullOrEmpty(Model.AllergyDescription))
+                                {
+                                    @Model.AllergyDescription
+                                }
+                                else
+                                {
+                                    <span class="empty-field">Not provided</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="field-row">
+                            <div class="field-label">Current Medication</div>
+                            <div class="field-value">
+                                @if (!string.IsNullOrEmpty(Model.CurrentMedication))
+                                {
+                                    @Model.CurrentMedication
+                                }
+                                else
+                                {
+                                    <span class="empty-field">Not provided</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="field-row">
+                            <div class="field-label">Height (cm)</div>
+                            <div class="field-value">
+                                @if (Model.HeightCm.HasValue)
+                                {
+                                    @Model.HeightCm.Value.ToString("0.##")
+                                }
+                                else
+                                {
+                                    <span class="empty-field">Not provided</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="field-row">
+                            <div class="field-label">Weight (kg)</div>
+                            <div class="field-value">
+                                @if (Model.WeightKg.HasValue)
+                                {
+                                    @Model.WeightKg.Value.ToString("0.##")
+                                }
+                                else
+                                {
+                                    <span class="empty-field">Not provided</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Additional Fields - Step 2 -->
+                    @foreach (var field in additionalFieldsData.Values.Where(f => f.Step == 2))
+                    {
+                        <div class="col-md-6">
+                            <div class="field-row">
+                                <div class="field-label">
+                                    @field.DisplayName
+                                    <small class="text-muted d-block">@field.FieldType</small>
+                                </div>
+                                <div class="field-value">
+                                    @if (!string.IsNullOrEmpty(field.Value))
+                                    {
+                                        if (field.FieldType.ToLower() == "checkbox")
+                                        {
+                                            @(field.Value == "true" ? "✓ Yes" : "✗ No")
+                                        }
+                                        else if (field.FieldType.ToLower() == "date" && DateTime.TryParse(field.Value, out DateTime dateValue))
+                                        {
+                                            @dateValue.ToString("yyyy-MM-dd")
+                                        }
+                                        else if (field.FieldType.ToLower() == "textarea")
+                                        {
+                                            <div style="white-space: pre-line">@field.Value</div>
+                                        }
+                                        else
+                                        {
+                                            @field.Value
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="empty-field">Not provided</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- STEP 3: Emergency Contact -->
+            <div class="field-section">
+                <h4 class="field-section-title">
+                    Step 3: Emergency Contact
+                    <span class="badge-step">Step 3</span>
+                </h4>
+
+                <div class="row">
+                    <!-- Original Fields - Step 3 -->
+                    <div class="col-md-6">
+                        <div class="field-row">
+                            <div class="field-label">Contact Name</div>
+                            <div class="field-value">
+                                @if (!string.IsNullOrEmpty(Model.ContactName))
+                                {
+                                    @Model.ContactName
+                                }
+                                else
+                                {
+                                    <span class="empty-field">Not provided</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="field-row">
+                            <div class="field-label">Relationship</div>
+                            <div class="field-value">
+                                @if (!string.IsNullOrEmpty(Model.Relationship))
+                                {
+                                    @Model.Relationship
+                                }
+                                else
+                                {
+                                    <span class="empty-field">Not provided</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="field-row">
+                            <div class="field-label">Phone Number</div>
+                            <div class="field-value">
+                                @if (!string.IsNullOrEmpty(Model.PhoneNumber))
+                                {
+                                    @Model.PhoneNumber
+                                }
+                                else
+                                {
+                                    <span class="empty-field">Not provided</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="field-row">
+                            <div class="field-label">Has Alternative Contact</div>
+                            <div class="field-value">
+                                @if (Model.HasAlternativeContact.HasValue)
+                                {
+                                    @(Model.HasAlternativeContact.Value ? "Yes" : "No")
+                                }
+                                else
+                                {
+                                    <span class="empty-field">Not provided</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (Model.HasAlternativeContact.HasValue && Model.HasAlternativeContact.Value)
+                    {
+                        <div class="col-md-6">
+                            <div class="field-row">
+                                <div class="field-label">Alternative Contact Name</div>
+                                <div class="field-value">
+                                    @if (!string.IsNullOrEmpty(Model.AltContactName))
+                                    {
+                                        @Model.AltContactName
+                                    }
+                                    else
+                                    {
+                                        <span class="empty-field">Not provided</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="field-row">
+                                <div class="field-label">Alternative Phone Number</div>
+                                <div class="field-value">
+                                    @if (!string.IsNullOrEmpty(Model.AltPhoneNumber))
+                                    {
+                                        @Model.AltPhoneNumber
+                                    }
+                                    else
+                                    {
+                                        <span class="empty-field">Not provided</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Additional Fields - Step 3 -->
+                    @foreach (var field in additionalFieldsData.Values.Where(f => f.Step == 3))
+                    {
+                        <div class="col-md-6">
+                            <div class="field-row">
+                                <div class="field-label">
+                                    @field.DisplayName
+                                    <small class="text-muted d-block">@field.FieldType</small>
+                                </div>
+                                <div class="field-value">
+                                    @if (!string.IsNullOrEmpty(field.Value))
+                                    {
+                                        if (field.FieldType.ToLower() == "checkbox")
+                                        {
+                                            @(field.Value == "true" ? "✓ Yes" : "✗ No")
+                                        }
+                                        else if (field.FieldType.ToLower() == "date" && DateTime.TryParse(field.Value, out DateTime dateValue))
+                                        {
+                                            @dateValue.ToString("yyyy-MM-dd")
+                                        }
+                                        else if (field.FieldType.ToLower() == "textarea")
+                                        {
+                                            <div style="white-space: pre-line">@field.Value</div>
+                                        }
+                                        else
+                                        {
+                                            @field.Value
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="empty-field">Not provided</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Summary Section -->
+            <div class="field-section">
+                <h4 class="field-section-title">Submission Summary</h4>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="field-card">
+                            <h6><i class="fas fa-user me-2"></i>Personal Info</h6>
+                            <div class="mb-2">
+                                <small>Fields: 4</small>
+                            </div>
+                            <div class="mb-2">
+                                <small>Additional: @additionalFieldsData.Values.Count(f => f.Step == 1)</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="field-card">
+                            <h6><i class="fas fa-heartbeat me-2"></i>Health Details</h6>
+                            <div class="mb-2">
+                                <small>Fields: 5</small>
+                            </div>
+                            <div class="mb-2">
+                                <small>Additional: @additionalFieldsData.Values.Count(f => f.Step == 2)</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="field-card">
+                            <h6><i class="fas fa-phone-alt me-2"></i>Emergency Contact</h6>
+                            <div class="mb-2">
+                                <small>Fields: @(Model.HasAlternativeContact.HasValue && Model.HasAlternativeContact.Value ? "6" : "4")</small>
+                            </div>
+                            <div class="mb-2">
+                                <small>Additional: @additionalFieldsData.Values.Count(f => f.Step == 3)</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Debug Information (Collapsible) -->
+            @if (!string.IsNullOrEmpty(Model.AdditionalFieldsJson))
+            {
+                <div class="mt-4">
+                    <div class="accordion" id="debugAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#debugCollapse">
+                                    <i class="fas fa-code me-2"></i>Technical Details (JSON Data)
+                                </button>
+                            </h2>
+                            <div id="debugCollapse" class="accordion-collapse collapse" data-bs-parent="#debugAccordion">
+                                <div class="accordion-body">
+                                    <div class="alert alert-info">
+                                        <small><strong>Form ID:</strong> @Model.ViewPublicFormId</small><br>
+                                        <small><strong>Form Version:</strong> @Model.FormVersion</small><br>
+                                        <small><strong>Total Additional Fields:</strong> @additionalFieldsData.Count</small>
+                                    </div>
+                                    <h6>Raw JSON Data:</h6>
+                                    <pre class="bg-dark text-light p-3 rounded" style="max-height: 300px; overflow-y: auto; font-size: 12px;">@Model.AdditionalFieldsJson</pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted">
+                        <i class="fas fa-database me-1"></i>
+                        Form ID: @Model.ViewPublicFormId.ToString().Substring(0, 8)...
+                    </span>
+                </div>
+                <div>
+                    <a asp-action="Index" class="btn btn-secondary me-2">
+                        <i class="fas fa-arrow-left me-1"></i> Back to List
+                    </a>
+                    @if (Model.IsDeleted.HasValue && Model.IsDeleted.Value)
+                    {
+                        <span class="badge bg-danger">Deleted</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Add any JavaScript if needed
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Details page loaded');
+        });
+    </script>
+}

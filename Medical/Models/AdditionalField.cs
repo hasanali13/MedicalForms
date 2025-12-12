@@ -1,0 +1,80 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Medical.Models
+{
+    public class AdditionalField
+    {
+        public Guid FieldId { get; set; } = Guid.NewGuid();
+
+        [Required]
+        public string FieldName { get; set; } = string.Empty;
+
+        [Required]
+        public string DisplayName { get; set; } = string.Empty;
+
+        public string FieldType { get; set; } = "text";
+
+        public int Step { get; set; } = 1;
+
+        public string? Placeholder { get; set; }
+
+        public bool IsRequired { get; set; } = false;
+
+        public bool IsConditional { get; set; } = false;
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public DateTime? UpdatedAt { get; set; }
+
+        public string CreatedBy { get; set; } = "System";
+
+        public bool IsActive { get; set; } = true;
+
+        public bool IsDeleted { get; set; } = false;
+
+        public int DisplayOrder { get; set; } = 0;
+
+        public string? OptionsJson { get; set; }
+
+        public string? ConditionalLogicJson { get; set; }
+
+        [NotMapped]
+        public List<string> Options
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(OptionsJson))
+                    return new List<string>();
+
+                try
+                {
+                    return System.Text.Json.JsonSerializer.Deserialize<List<string>>(OptionsJson)
+                        ?? new List<string>();
+                }
+                catch
+                {
+                    return new List<string>();
+                }
+            }
+            set => OptionsJson = System.Text.Json.JsonSerializer.Serialize(value);
+        }
+
+        [NotMapped]
+        public string InputType => FieldType.ToLower() switch
+        {
+            "number" => "number",
+            "date" => "date",
+            "email" => "email",
+            "tel" => "tel",
+            "textarea" => "textarea",
+            "select" => "select",
+            "checkbox" => "checkbox",
+            "radio" => "radio",
+            "file" => "file",
+            _ => "text"
+        };
+    }
+}

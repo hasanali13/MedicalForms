@@ -1,0 +1,983 @@
+﻿@model Medical.Models.ViewPublicForm
+@{
+    ViewData["Title"] = "Form Builder";
+    ViewBag.ActiveMenu = "FormBuilder";
+
+    var additionalFields = ViewBag.AdditionalFields as List<Medical.Models.AdditionalField> ?? new List<Medical.Models.AdditionalField>();
+}
+
+<style>
+    /* Modal CSS - Fixed overlay */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1050;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s, visibility 0.3s;
+        pointer-events: none;
+    }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+    .modal-dialog {
+        background: white;
+        border-radius: 12px;
+        width: 420px;
+        max-width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        transform: translateY(-20px);
+        transition: transform 0.3s;
+        pointer-events: all;
+    }
+
+    .modal-overlay.show .modal-dialog {
+        transform: translateY(0);
+    }
+
+    .modal-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid #EAECF0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1D2939;
+        margin: 0;
+    }
+
+    .modal-body {
+        padding: 24px;
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+
+    .modal-footer {
+        padding: 20px 24px;
+        border-top: 1px solid #EAECF0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: #344054;
+        margin-bottom: 6px;
+    }
+
+    .required-star {
+        color: #F04438;
+    }
+
+    .form-control-modal {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid #D0D5DD;
+        border-radius: 8px;
+        font-size: 14px;
+        background: white;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+        .form-control-modal:focus {
+            outline: none;
+            border-color: #1F6DFF;
+            box-shadow: 0 0 0 3px rgba(31, 109, 255, 0.1);
+        }
+
+    .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 6px;
+        transition: background-color 0.2s;
+        user-select: none;
+    }
+
+        .checkbox-row:hover {
+            background-color: #f8f9fa;
+        }
+
+    .custom-checkbox {
+        width: 16px;
+        height: 16px;
+        border: 2px solid #D0D5DD;
+        border-radius: 4px;
+        background: white;
+        position: relative;
+        flex-shrink: 0;
+        transition: all 0.2s;
+    }
+
+        .custom-checkbox.checked {
+            background: #1F6DFF;
+            border-color: #1F6DFF;
+        }
+
+            .custom-checkbox.checked::after {
+                content: "✓";
+                position: absolute;
+                color: white;
+                font-size: 12px;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+            }
+
+    .checkbox-label {
+        font-size: 14px;
+        color: #344054;
+        user-select: none;
+    }
+
+    .btn-secondary {
+        background: #FFFFFF;
+        border: 1px solid #D0D5DD;
+        color: #344054;
+        padding: 8px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+        .btn-secondary:hover {
+            background: #f8f9fa;
+        }
+
+    .btn-primary {
+        background: #1F6DFF;
+        border: 1px solid #1F6DFF;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+        .btn-primary:hover {
+            background: #0D5CE1;
+        }
+
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 24px;
+        color: #6B7280;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .close-btn:hover {
+            color: #1F2937;
+        }
+
+    /* Additional field styling */
+    .additional-field-container {
+        border-left: 3px solid #1F6DFF;
+        padding: 12px;
+        margin-bottom: 15px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        position: relative;
+    }
+
+    .field-actions {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+    }
+
+    .delete-field-btn {
+        background: none;
+        border: none;
+        color: #dc3545;
+        cursor: pointer;
+        font-size: 14px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+
+        .delete-field-btn:hover {
+            color: #b02a37;
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+
+    .field-type-badge {
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 10px;
+        background: #e9ecef;
+        color: #495057;
+        margin-left: 8px;
+    }
+
+    /* Toast notification */
+    .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #10B981;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        z-index: 10000;
+        animation: toastSlideIn 0.3s ease-out;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+        .toast.error {
+            background: #F04438;
+        }
+
+        .toast.warning {
+            background: #F79009;
+        }
+
+        .toast.info {
+            background: #3B82F6;
+        }
+
+    @@keyframes toastSlideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @@keyframes toastSlideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+
+    /* Form Builder Layout */
+    .builder-layout {
+        display: flex;
+        gap: 20px;
+        min-height: 70vh;
+    }
+
+    .left-steps {
+        width: 250px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+    }
+
+    .step-item {
+        padding: 15px;
+        margin-bottom: 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        background: white;
+        border: 1px solid #dee2e6;
+        transition: all 0.2s;
+        user-select: none;
+    }
+
+        .step-item.active {
+            background: #1F6DFF;
+            color: white;
+            border-color: #1F6DFF;
+        }
+
+        .step-item:hover:not(.active) {
+            background: #e9ecef;
+        }
+
+    .form-panel {
+        flex: 1;
+        background: white;
+        border-radius: 8px;
+        padding: 30px;
+        border: 1px solid #dee2e6;
+    }
+
+    .form-step {
+        display: block;
+    }
+
+        .form-step.hidden {
+            display: none;
+        }
+
+    .field-properties-card {
+        width: 300px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+    }
+
+    .fp-header {
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+
+    .fp-title {
+        font-weight: 600;
+        color: #495057;
+    }
+
+    /* Modal overlay click protection */
+    .modal-overlay.show::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: -1;
+    }
+</style>
+
+<!-- TOP HEADER -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 class="mb-1">Visual Form Builder</h2>
+        <p class="text-muted">Build your form with steps, fields, and conditional logic</p>
+    </div>
+    <div>
+        <button type="button" class="btn btn-primary" id="openModalBtn">
+            ➕ Add Field
+        </button>
+    </div>
+</div>
+
+<!-- Toast Notification Container -->
+<div id="toastContainer"></div>
+
+<form asp-action="Create" method="post" autocomplete="off" id="mainForm">
+    @Html.AntiForgeryToken()
+
+    <div class="builder-layout">
+        <!-- LEFT STEPS PANEL -->
+        <div class="left-steps">
+            <h6 class="text-muted mb-3">FORM STEPS</h6>
+            <div id="step1Tab" class="step-item active" data-step="1">
+                Step 1<br /><small>Personal Information</small>
+            </div>
+            <div id="step2Tab" class="step-item" data-step="2">
+                Step 2<br /><small>Health Details</small>
+            </div>
+            <div id="step3Tab" class="step-item" data-step="3">
+                Step 3<br /><small>Emergency Contact</small>
+            </div>
+        </div>
+
+        <!-- MIDDLE FORM PANEL -->
+        <div class="form-panel">
+            <!-- STEP 1 -->
+            <div id="step1" class="form-step">
+                <h4>Personal Information</h4><hr />
+
+                <!-- Original Fields -->
+                <div class="mb-3">
+                    <label asp-for="FullName" class="form-label"></label>
+                    <input asp-for="FullName" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Age" class="form-label"></label>
+                    <input asp-for="Age" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Gender" class="form-label"></label>
+                    <input asp-for="Gender" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="DateOfBirth" class="form-label"></label>
+                    <input asp-for="DateOfBirth" type="date" class="form-control" />
+                </div>
+
+                <!-- Additional Fields for Step 1 -->
+                <div id="step1AdditionalFields">
+                    @foreach (var field in additionalFields.Where(f => f.Step == 1))
+                    {
+                        <div class="additional-field-container" data-field-id="@field.FieldId">
+                            <div class="field-actions">
+                                <button type="button" class="delete-field-btn" data-field-id="@field.FieldId">
+                                    🗑️
+                                </button>
+                            </div>
+
+                            <label class="form-label">
+                                @field.DisplayName
+                                @if (field.IsRequired)
+                                {
+                                    <span class="text-danger">*</span>
+                                }
+                                <span class="field-type-badge">@field.FieldType</span>
+                            </label>
+
+                            @await Html.PartialAsync("_AdditionalFieldInput", field)
+                        </div>
+                    }
+                </div>
+
+                <button type="button" class="btn btn-primary" data-next-step="2">Next</button>
+            </div>
+
+            <!-- STEP 2 -->
+            <div id="step2" class="form-step hidden">
+                <h4>Health Details</h4><hr />
+
+                <!-- Original Fields -->
+                <div class="mb-3">
+                    <label asp-for="HasAllergies" class="form-label"></label>
+                    <input asp-for="HasAllergies" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="AllergyDescription" class="form-label"></label>
+                    <input asp-for="AllergyDescription" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="CurrentMedication" class="form-label"></label>
+                    <input asp-for="CurrentMedication" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="HeightCm" class="form-label"></label>
+                    <input asp-for="HeightCm" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="WeightKg" class="form-label"></label>
+                    <input asp-for="WeightKg" class="form-control" />
+                </div>
+
+                <!-- Additional Fields for Step 2 -->
+                <div id="step2AdditionalFields">
+                    @foreach (var field in additionalFields.Where(f => f.Step == 2))
+                    {
+                        <div class="additional-field-container" data-field-id="@field.FieldId">
+                            <div class="field-actions">
+                                <button type="button" class="delete-field-btn" data-field-id="@field.FieldId">
+                                    🗑️
+                                </button>
+                            </div>
+
+                            <label class="form-label">
+                                @field.DisplayName
+                                @if (field.IsRequired)
+                                {
+                                    <span class="text-danger">*</span>
+                                }
+                                <span class="field-type-badge">@field.FieldType</span>
+                            </label>
+
+                            @await Html.PartialAsync("_AdditionalFieldInput", field)
+                        </div>
+                    }
+                </div>
+
+                <button type="button" class="btn btn-secondary" data-prev-step="1">Back</button>
+                <button type="button" class="btn btn-primary" data-next-step="3">Next</button>
+            </div>
+
+            <!-- STEP 3 -->
+            <div id="step3" class="form-step hidden">
+                <h4>Emergency Contact</h4><hr />
+
+                <!-- Original Fields -->
+                <div class="mb-3">
+                    <label asp-for="ContactName" class="form-label"></label>
+                    <input asp-for="ContactName" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Relationship" class="form-label"></label>
+                    <input asp-for="Relationship" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="PhoneNumber" class="form-label"></label>
+                    <input asp-for="PhoneNumber" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="HasAlternativeContact" class="form-label"></label>
+                    <input asp-for="HasAlternativeContact" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="AltContactName" class="form-label"></label>
+                    <input asp-for="AltContactName" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="AltPhoneNumber" class="form-label"></label>
+                    <input asp-for="AltPhoneNumber" class="form-control" placeholder="Alternative phone" />
+                </div>
+
+                <!-- Additional Fields for Step 3 -->
+                <div id="step3AdditionalFields">
+                    @foreach (var field in additionalFields.Where(f => f.Step == 3))
+                    {
+                        <div class="additional-field-container" data-field-id="@field.FieldId">
+                            <div class="field-actions">
+                                <button type="button" class="delete-field-btn" data-field-id="@field.FieldId">
+                                    🗑️
+                                </button>
+                            </div>
+
+                            <label class="form-label">
+                                @field.DisplayName
+                                @if (field.IsRequired)
+                                {
+                                    <span class="text-danger">*</span>
+                                }
+                                <span class="field-type-badge">@field.FieldType</span>
+                            </label>
+
+                            @await Html.PartialAsync("_AdditionalFieldInput", field)
+                        </div>
+                    }
+                </div>
+
+                <button type="button" class="btn btn-secondary" data-prev-step="2">Back</button>
+                <button type="submit" class="btn btn-success">Submit Form</button>
+            </div>
+        </div>
+
+        <!-- RIGHT PROPERTIES PANEL -->
+        <div class="field-properties-card">
+            <div class="fp-header">
+                <span class="fp-title">FIELD PROPERTIES</span>
+            </div>
+            <div class="fp-group">
+                <label>Field Label</label>
+                <input id="fpLabel" type="text" class="fp-input" />
+            </div>
+            <div class="fp-group">
+                <label>Field Type</label>
+                <select id="fpType" class="fp-select">
+                    <option value="text">Text</option>
+                    <option value="number">Number</option>
+                    <option value="date">Date</option>
+                </select>
+            </div>
+            <div class="fp-group">
+                <label>Step</label>
+                <select id="fpStep" class="fp-select">
+                    <option value="1">Step 1</option>
+                    <option value="2">Step 2</option>
+                    <option value="3">Step 3</option>
+                </select>
+            </div>
+            <div class="fp-group">
+                <label>Placeholder</label>
+                <input id="fpPlaceholder" type="text" class="fp-input" />
+            </div>
+            <div class="fp-toggle-row">
+                <span>Required Field</span>
+                <label class="switch">
+                    <input type="checkbox" id="fpRequired">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="fp-toggle-row">
+                <span>Conditional Field</span>
+                <label class="switch">
+                    <input type="checkbox" id="fpConditional">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- ADD FIELD MODAL - WITH INLINE EVENT HANDLERS -->
+<div id="addFieldModal" class="modal-overlay" onclick="if(event.target===this) modalCloseHandler()">
+    <div class="modal-dialog" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-title">Add New Field</div>
+            <button type="button" class="close-btn" onclick="modalCloseHandler()">×</button>
+        </div>
+        <div class="modal-body">
+            <!-- Field Label -->
+            <div class="form-group">
+                <label class="form-label">
+                    Field Label <span class="required-star">*</span>
+                </label>
+                <input type="text" id="fieldLabelInput" class="form-control-modal"
+                       placeholder="e.g., Email Address" required />
+                <small class="text-muted" style="font-size: 12px;">This will appear as the field label</small>
+            </div>
+
+            <!-- Field Type -->
+            <div class="form-group">
+                <label class="form-label">Field Type</label>
+                <select id="fieldTypeSelect" class="form-control-modal">
+                    <option value="text">Text Input</option>
+                    <option value="number">Number Input</option>
+                    <option value="date">Date Picker</option>
+                    <option value="email">Email</option>
+                    <option value="tel">Phone</option>
+                    <option value="textarea">Text Area</option>
+                    <option value="select">Dropdown Select</option>
+                    <option value="checkbox">Checkbox</option>
+                </select>
+            </div>
+
+            <!-- Step Selection -->
+            <div class="form-group">
+                <label class="form-label">Step</label>
+                <select id="fieldStepSelect" class="form-control-modal">
+                    <option value="1">Step 1: Personal Information</option>
+                    <option value="2">Step 2: Health Details</option>
+                    <option value="3">Step 3: Emergency Contact</option>
+                </select>
+            </div>
+
+            <!-- Placeholder -->
+            <div class="form-group">
+                <label class="form-label">Placeholder Text (Optional)</label>
+                <input type="text" id="fieldPlaceholderInput" class="form-control-modal"
+                       placeholder="e.g., Enter your email..." />
+            </div>
+
+            <!-- Checkboxes -->
+            <div class="checkbox-row" id="requiredCheckboxRow">
+                <div id="requiredCheckbox" class="custom-checkbox"></div>
+                <label class="checkbox-label">Required field</label>
+            </div>
+
+            <div class="checkbox-row" id="conditionalCheckboxRow">
+                <div id="conditionalCheckbox" class="custom-checkbox"></div>
+                <label class="checkbox-label">Conditional field (shows based on logic)</label>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="modalCloseHandler()">Cancel</button>
+            <button type="button" class="btn-primary" onclick="submitAddFieldForm()">Add Field</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // =================================
+        // GLOBAL STATE
+        // =================================
+        let isModalOpen = false;
+
+        // =================================
+        // MODAL FUNCTIONS - SIMPLE & RELIABLE
+        // =================================
+        function modalOpenHandler() {
+            const modal = document.getElementById('addFieldModal');
+            modal.classList.add('show');
+            isModalOpen = true;
+            document.body.style.overflow = 'hidden';
+            document.getElementById('fieldLabelInput').focus();
+        }
+
+        function modalCloseHandler() {
+            const modal = document.getElementById('addFieldModal');
+            modal.classList.remove('show');
+            isModalOpen = false;
+            document.body.style.overflow = '';
+            resetModalFields();
+        }
+
+        function toggleCheckbox(type) {
+            const checkbox = document.getElementById(type + 'Checkbox');
+            checkbox.classList.toggle('checked');
+        }
+
+        function resetModalFields() {
+            document.getElementById('fieldLabelInput').value = '';
+            document.getElementById('fieldTypeSelect').value = 'text';
+            document.getElementById('fieldStepSelect').value = '1';
+            document.getElementById('fieldPlaceholderInput').value = '';
+            document.getElementById('requiredCheckbox').classList.remove('checked');
+            document.getElementById('conditionalCheckbox').classList.remove('checked');
+        }
+
+        // =================================
+        // GET ANTI-FORGERY TOKEN
+        // =================================
+        function getToken() {
+            return document.querySelector('input[name="__RequestVerificationToken"]').value;
+        }
+
+        // =================================
+        // AJAX FIELD SUBMISSION
+        // =================================
+        async function submitAddFieldForm() {
+            const fieldLabel = document.getElementById('fieldLabelInput').value.trim();
+            if (!fieldLabel) {
+                showToast('Field Label is required', 'error');
+                document.getElementById('fieldLabelInput').focus();
+                return;
+            }
+
+            const fieldData = {
+                DisplayName: fieldLabel,
+                FieldType: document.getElementById('fieldTypeSelect').value,
+                Step: parseInt(document.getElementById('fieldStepSelect').value),
+                Placeholder: document.getElementById('fieldPlaceholderInput').value.trim(),
+                IsRequired: document.getElementById('requiredCheckbox').classList.contains('checked'),
+                IsConditional: document.getElementById('conditionalCheckbox').classList.contains('checked')
+            };
+
+            showToast('Adding field...', 'info');
+
+            try {
+                const response = await fetch('@Url.Action("AddAdditionalField", "ViewPublicForms")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': getToken()
+                    },
+                    body: JSON.stringify(fieldData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    modalCloseHandler();
+
+                    // Reload the page to see the new field
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showToast(result.message, 'error');
+                }
+            } catch (error) {
+                showToast('Error adding field: ' + error.message, 'error');
+            }
+        }
+
+        // =================================
+        // DELETE FIELD FUNCTION
+        // =================================
+        async function deleteFieldHandler(fieldId, button) {
+            if (!confirm('Are you sure you want to delete this field?')) {
+                return;
+            }
+
+            const fieldContainer = button.closest('.additional-field-container');
+
+            try {
+                const response = await fetch('@Url.Action("DeleteAdditionalField", "ViewPublicForms")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': getToken()
+                    },
+                    body: JSON.stringify({ FieldId: fieldId })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    fieldContainer.style.transition = 'opacity 0.3s';
+                    fieldContainer.style.opacity = '0';
+                    setTimeout(() => {
+                        fieldContainer.remove();
+                    }, 300);
+                } else {
+                    showToast(result.message, 'error');
+                }
+            } catch (error) {
+                showToast('Error deleting field: ' + error.message, 'error');
+            }
+        }
+
+        // =================================
+        // FORM NAVIGATION
+        // =================================
+        function switchStep(step) {
+            // Hide all steps
+            document.querySelectorAll('.form-step').forEach(s => s.classList.add('hidden'));
+
+            // Show selected step
+            const stepElement = document.getElementById(`step${step}`);
+            if (stepElement) {
+                stepElement.classList.remove('hidden');
+            }
+
+            // Update step tabs
+            document.querySelectorAll('.step-item').forEach(s => s.classList.remove('active'));
+            const stepTab = document.getElementById(`step${step}Tab`);
+            if (stepTab) {
+                stepTab.classList.add('active');
+            }
+        }
+
+        // =================================
+        // TOAST NOTIFICATION
+        // =================================
+        function showToast(message, type = 'success') {
+            // Remove existing toast
+            const existingToast = document.querySelector('.toast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+
+            // Create new toast
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                ${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}
+                <span>${message}</span>
+            `;
+
+            document.getElementById('toastContainer').appendChild(toast);
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.style.animation = 'toastSlideOut 0.3s ease-out';
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        // =================================
+        // ENTER KEY HANDLER FOR MODAL
+        // =================================
+        function handleModalEnterKey(e) {
+            if (e.key === 'Enter' && isModalOpen) {
+                e.preventDefault();
+                e.stopPropagation();
+                submitAddFieldForm();
+            }
+        }
+
+        // =================================
+        // ESCAPE KEY HANDLER
+        // =================================
+        function handleEscapeKey(e) {
+            if (e.key === 'Escape' && isModalOpen) {
+                e.preventDefault();
+                e.stopPropagation();
+                modalCloseHandler();
+            }
+        }
+
+        // =================================
+        // INITIALIZATION
+        // =================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize step 1
+            switchStep(1);
+
+            // Open modal button
+            document.getElementById('openModalBtn').addEventListener('click', modalOpenHandler);
+
+            // Step navigation
+            document.querySelectorAll('.step-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const step = parseInt(this.getAttribute('data-step'));
+                    if (!isNaN(step)) {
+                        switchStep(step);
+                    }
+                });
+            });
+
+            // Next/Back buttons
+            document.querySelectorAll('[data-next-step]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const step = parseInt(this.getAttribute('data-next-step'));
+                    if (!isNaN(step)) {
+                        switchStep(step);
+                    }
+                });
+            });
+
+            document.querySelectorAll('[data-prev-step]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const step = parseInt(this.getAttribute('data-prev-step'));
+                    if (!isNaN(step)) {
+                        switchStep(step);
+                    }
+                });
+            });
+
+            // Delete field buttons
+            document.querySelectorAll('.delete-field-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const fieldId = this.getAttribute('data-field-id');
+                    if (fieldId) {
+                        deleteFieldHandler(fieldId, this);
+                    }
+                });
+            });
+
+            // Checkbox click handlers
+            document.getElementById('requiredCheckboxRow').addEventListener('click', function() {
+                toggleCheckbox('required');
+            });
+
+            document.getElementById('conditionalCheckboxRow').addEventListener('click', function() {
+                toggleCheckbox('conditional');
+            });
+
+            // Enter key in modal input
+            document.getElementById('fieldLabelInput').addEventListener('keydown', handleModalEnterKey);
+
+            // Escape key to close modal
+            document.addEventListener('keydown', handleEscapeKey);
+
+            // Prevent form submission on Enter in modal
+            const modalInputs = document.querySelectorAll('#addFieldModal input, #addFieldModal select');
+            modalInputs.forEach(input => {
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && isModalOpen) {
+                        e.stopPropagation();
+                    }
+                });
+            });
+        });
+    </script>
+}

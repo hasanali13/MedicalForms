@@ -1,0 +1,112 @@
+﻿@{
+    Layout = "_Layout";
+    ViewBag.ActiveMenu = "Dashboard";  // highlights Dashboard in sidebar
+}
+
+<style>
+    :root {
+        --primary-600: #1F6DFF;
+        --primary-500: #4E8AFF;
+        --primary-100: #AEC8FF;
+        --gray-50: #F9FAFB;
+        --gray-100: #EAECF0;
+        --gray-200: #D0D5DD;
+        --gray-400: #98A2B3;
+        --gray-600: #475467;
+        --gray-900: #1D2939;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+    }
+
+    .main-content {
+        padding: 25px;
+    }
+
+    .big-banner {
+        background: linear-gradient(to right, var(--primary-600), var(--primary-500));
+        padding: 28px;
+        border-radius: var(--radius-lg);
+        color: white;
+        font-size: 22px;
+        margin-bottom: 25px;
+        line-height: 1.4;
+    }
+
+    .dashboard-card {
+        background: white;
+        border-radius: var(--radius-md);
+        padding: 22px;
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.05);
+        border: 1px solid var(--gray-100);
+    }
+
+    .submission-card {
+        background: white;
+        border-radius: var(--radius-md);
+        padding: 15px;
+        border: 1px solid var(--gray-100);
+    }
+</style>
+
+
+<div class="main-content">
+
+    <!-- HEADER -->
+    <div class="big-banner">
+        <strong>Visual Form Builder</strong><br />
+        Manage steps, fields, and conditional logic all in one place
+    </div>
+
+    <!-- STATS CARDS -->
+    <div class="row mb-4">
+
+        <div class="col-md-4 mb-3">
+            <div class="dashboard-card">
+                <h4>247</h4>
+                <span class="text-muted">Total Submissions</span><br />
+                <small class="text-success">+12% from last month</small>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="dashboard-card">
+                <h4>1</h4>
+                <span class="text-muted">Active Forms</span><br />
+                <small>Health Screening</small>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="dashboard-card">
+                <h4>4.2 min</h4>
+                <span class="text-muted">Avg. Completion Time</span><br />
+                <small class="text-success">-8% faster this week</small>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ACTIVE FORM CARD -->
+    <div class="dashboard-card mb-4">
+        <h5 class="mb-1">
+            Health Screening Questionnaire
+            <span class="badge bg-success">Active</span>
+        </h5>
+        <p class="text-muted">Multi-step form • 3 steps • 13 fields</p>
+
+        <div class="d-flex gap-3 mt-2">
+            <a class="btn btn-primary">View Details</a>
+            <a class="btn btn-outline-primary">Edit Form</a>
+            <a class="btn btn-outline-secondary">View Submissions</a>
+        </div>
+    </div>
+
+    <!-- RECENT SUBMISSIONS -->
+    <h5>Recent Submissions</h5>
+
+    <div class="submission-card mt-2">
+        <strong>John Doe</strong><br />
+        <small class="text-muted">Submitted 2 hours ago</small>
+    </div>
+
+</div>
