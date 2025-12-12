@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Medical.Models
 {
@@ -66,10 +67,31 @@ namespace Medical.Models
         [NotMapped]
         public List<AdditionalField> AdditionalFields
         {
-            get => string.IsNullOrEmpty(AdditionalFieldsJson)
-                ? new List<AdditionalField>()
-                : JsonConvert.DeserializeObject<List<AdditionalField>>(AdditionalFieldsJson)
-                  ?? new List<AdditionalField>();
+            get
+            {
+                if (string.IsNullOrEmpty(AdditionalFieldsJson))
+                    return new List<AdditionalField>();
+
+                try
+                {
+                    var token = JToken.Parse(AdditionalFieldsJson);
+                    if (token.Type == JTokenType.Array)
+                        return token.ToObject<List<AdditionalField>>() ?? new List<AdditionalField>();
+
+                    if (token.Type == JTokenType.Object)
+                    {
+                        var single = token.ToObject<AdditionalField>();
+                        return single is null ? new List<AdditionalField>() : new List<AdditionalField> { single };
+                    }
+
+                    return new List<AdditionalField>();
+                }
+                catch
+                {
+                    return new List<AdditionalField>();
+                }
+            }
+
             set => AdditionalFieldsJson = JsonConvert.SerializeObject(value);
         }
 

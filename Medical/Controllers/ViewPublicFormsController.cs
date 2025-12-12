@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Medical.Data;
 using Medical.Models;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Medical.Controllers
 {
@@ -24,9 +25,13 @@ namespace Medical.Controllers
         {
             ViewBag.ActiveMenu = "FormBuilder";
 
-            // Get additional fields from configuration
+            // Get additional fields from configuration (hide soft-deleted)
             var configForm = GetOrCreateConfigForm();
-            ViewBag.AdditionalFields = configForm.AdditionalFields;
+            ViewBag.AdditionalFields = configForm.AdditionalFields
+                .Where(f => f.IsActive && !f.IsDeleted)
+                .OrderBy(f => f.Step)
+                .ThenBy(f => f.DisplayOrder)
+                .ToList();
 
             return View(new ViewPublicForm());
         }
@@ -117,10 +122,50 @@ namespace Medical.Controllers
                 var configForm = GetOrCreateConfigForm();
                 var existingFields = configForm.AdditionalFields ?? new List<AdditionalField>();
 
-                // Check if field with same name already exists
+                // Check if field with same name already exists (allow re-activate soft-deleted)
                 var fieldName = GenerateFieldName(request.DisplayName.Trim());
-                if (existingFields.Any(f => f.FieldName == fieldName))
+                var existingField = existingFields.FirstOrDefault(f => f.FieldName == fieldName);
+                if (existingField != null)
                 {
+                    if (existingField.IsDeleted)
+                    {
+                        // Reactivate and update properties
+                        existingField.DisplayName = request.DisplayName.Trim();
+                        existingField.FieldType = request.FieldType;
+                        existingField.Step = request.Step;
+                        existingField.Placeholder = string.IsNullOrWhiteSpace(request.Placeholder) ? null : request.Placeholder.Trim();
+                        existingField.IsRequired = request.IsRequired;
+                        existingField.IsConditional = request.IsConditional;
+                        existingField.IsDeleted = false;
+                        existingField.IsActive = true;
+                        existingField.UpdatedAt = DateTime.UtcNow;
+
+                        configForm.AdditionalFields = existingFields;
+                        configForm.FormVersion++;
+                        configForm.CreatedAt = DateTime.UtcNow;
+
+                        _context.ViewPublicForm.Update(configForm);
+                        await _context.SaveChangesAsync();
+
+                        return Json(new
+                        {
+                            success = true,
+                            message = $"Field '{existingField.DisplayName}' restored successfully!",
+                            field = new
+                            {
+                                fieldId = existingField.FieldId,
+                                displayName = existingField.DisplayName,
+                                fieldName = existingField.FieldName,
+                                fieldType = existingField.FieldType,
+                                step = existingField.Step,
+                                placeholder = existingField.Placeholder,
+                                isRequired = existingField.IsRequired,
+                                isConditional = existingField.IsConditional,
+                                inputType = existingField.InputType
+                            }
+                        });
+                    }
+
                     return Json(new { success = false, message = "A field with this name already exists" });
                 }
 
@@ -303,6 +348,57 @@ namespace Medical.Controllers
             }
 
             return configForm;
+        }
+
+        // Maintenance: normalize config AdditionalFieldsJson entries that are single objects into arrays
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult NormalizeConfigAdditionalFields()
+        {
+            try
+            {
+                var configs = _context.ViewPublicForm
+                    .Where(f => f.FullName == null)
+                    .ToList();
+
+                var updated = 0;
+
+                foreach (var cfg in configs)
+                {
+                    if (string.IsNullOrWhiteSpace(cfg.AdditionalFieldsJson)) continue;
+
+                    var raw = cfg.AdditionalFieldsJson.Trim();
+                    if (!raw.StartsWith("{")) continue; // only single-object cases
+
+                    try
+                    {
+                        var token = JToken.Parse(raw);
+                        if (token.Type == JTokenType.Object)
+                        {
+                            // Heuristic: treat as an AdditionalField object if it has common field keys
+                            if (token["FieldName"] != null || token["DisplayName"] != null || token["FieldId"] != null)
+                            {
+                                var arr = new JArray(token);
+                                cfg.AdditionalFieldsJson = arr.ToString(Newtonsoft.Json.Formatting.None);
+                                _context.ViewPublicForm.Update(cfg);
+                                updated++;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // ignore parse errors for individual rows
+                    }
+                }
+
+                if (updated > 0) _context.SaveChanges();
+
+                return Json(new { success = true, updated });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
         }
 
         private string GenerateFieldName(string displayName)
