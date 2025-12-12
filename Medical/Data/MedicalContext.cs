@@ -24,7 +24,6 @@ namespace Medical.Data
                 entity.Property(e => e.ViewPublicFormId).ValueGeneratedNever();
             });
 
-            // Configure FormLabelHistory entity
             
         }
     }
