@@ -314,6 +314,109 @@
         padding: 20px;
     }
 
+    /* Fields list under steps (bottom area) */
+    .fields-section {
+        margin-top: 18px;
+        padding-top: 12px;
+        border-top: 1px solid #E6EEF8;
+    }
+
+    .fields-section h6 {
+        font-size: 12px;
+        color: #334155;
+        letter-spacing: 0.6px;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+    }
+
+    .fields-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .field-item {
+        background: white;
+        border: 1px solid #E6EEF8;
+        padding: 10px 12px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+    }
+
+    .field-item.active {
+        border-color: #1F6DFF;
+        box-shadow: 0 4px 18px rgba(31,109,255,0.12);
+        background: #F3F9FF;
+    }
+
+    .drag-handle {
+        width: 10px;
+        height: 22px;
+        display: inline-block;
+        background: linear-gradient(#CBD5E1 0 50%, transparent 50%);
+        opacity: 0.6;
+        margin-right: 6px;
+    }
+
+    /* Step pill / badge styles (match screenshot) */
+    .step-item {
+        padding: 0;
+        margin-bottom: 12px;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: none;
+    }
+
+    .step-pill {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 14px;
+        border-radius: 10px;
+        background: white;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.18s;
+    }
+
+    .step-item .step-title {
+        font-weight: 700;
+        color: #0F1724;
+    }
+
+    .step-item .step-subtitle {
+        display: block;
+        font-size: 12px;
+        color: #667085;
+        font-weight: 500;
+        margin-top: 4px;
+    }
+
+    .step-count {
+        background: #F1F5F9;
+        color: #475569;
+        font-size: 12px;
+        padding: 6px 8px;
+        border-radius: 999px;
+        min-width: 46px;
+        text-align: center;
+        margin-left: 12px;
+    }
+
+    .step-item.active .step-pill {
+        background: linear-gradient(0deg,#1F6DFF,#1F6DFF);
+        color: white;
+        border-color: #1F6DFF;
+    }
+
+    .step-item.active .step-count {
+        background: rgba(255,255,255,0.12);
+        color: white;
+    }
+
     .step-item {
         padding: 15px;
         margin-bottom: 10px;
@@ -405,13 +508,66 @@
         <div class="left-steps">
             <h6 class="text-muted mb-3">FORM STEPS</h6>
             <div id="step1Tab" class="step-item active" data-step="1">
-                Step 1<br /><small>Personal Information</small>
+                <div class="step-pill">
+                    <div>
+                        <div class="step-title">Step 1</div>
+                        <div class="step-subtitle">Personal Information</div>
+                    </div>
+                    <div class="step-count" id="step1Count">0 fields</div>
+                </div>
             </div>
+
             <div id="step2Tab" class="step-item" data-step="2">
-                Step 2<br /><small>Health Details</small>
+                <div class="step-pill">
+                    <div>
+                        <div class="step-title">Step 2</div>
+                        <div class="step-subtitle">Health Details</div>
+                    </div>
+                    <div class="step-count" id="step2Count">0 fields</div>
+                </div>
             </div>
+
             <div id="step3Tab" class="step-item" data-step="3">
-                Step 3<br /><small>Emergency Contact</small>
+                <div class="step-pill">
+                    <div>
+                        <div class="step-title">Step 3</div>
+                        <div class="step-subtitle">Emergency Contact</div>
+                    </div>
+                    <div class="step-count" id="step3Count">0 fields</div>
+                </div>
+            </div>
+
+            <div class="fields-section">
+                <h6>FIELDS IN <span id="currentStepName">PERSONAL INFORMATION</span></h6>
+
+                <div class="fields-list" id="fieldsList">
+                    <!-- Render original fields for step 1 -->
+                    <div class="field-item">
+                        <span class="drag-handle" aria-hidden="true"></span>
+                        <span>Full Name</span>
+                    </div>
+                    <div class="field-item active">
+                        <span class="drag-handle" aria-hidden="true"></span>
+                        <span>Age</span>
+                    </div>
+                    <div class="field-item">
+                        <span class="drag-handle" aria-hidden="true"></span>
+                        <span>Gender</span>
+                    </div>
+                    <div class="field-item">
+                        <span class="drag-handle" aria-hidden="true"></span>
+                        <span>Date of Birth</span>
+                    </div>
+
+                    <!-- Additional dynamic fields for step 1 -->
+                    @foreach (var field in additionalFields.Where(f => f.Step == 1))
+                    {
+                        <div class="field-item" data-field-id="@field.FieldId">
+                            <span class="drag-handle" aria-hidden="true"></span>
+                            <span>@field.DisplayName</span>
+                        </div>
+                    }
+                </div>
             </div>
         </div>
 
@@ -432,7 +588,13 @@
                 </div>
                 <div class="mb-3">
                     <label asp-for="Gender" class="form-label"></label>
-                    <input asp-for="Gender" class="form-control" />
+                    <select asp-for="Gender" class="form-control form-select">
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                        <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
                 </div>
                 <div class="mb-3">
                     <label asp-for="DateOfBirth" class="form-label"></label>
@@ -474,9 +636,14 @@
                 <!-- Original Fields -->
                 <div class="mb-3">
                     <label asp-for="HasAllergies" class="form-label"></label>
-                    <input asp-for="HasAllergies" class="form-control" />
+                    <select asp-for="HasAllergies" class="form-control form-select" id="HasAllergiesSelect">
+                        <option value="">Select</option>
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                    </select>
                 </div>
-                <div class="mb-3">
+
+                <div class="mb-3" id="allergyDescriptionGroup">
                     <label asp-for="AllergyDescription" class="form-label"></label>
                     <input asp-for="AllergyDescription" class="form-control" />
                 </div>
@@ -822,6 +989,13 @@
                     fieldContainer.style.opacity = '0';
                     setTimeout(() => {
                         fieldContainer.remove();
+                        // remove from left-side list if present
+                        try {
+                            const leftEl = document.querySelector(`#fieldsList [data-field-id="${fieldId}"]`);
+                            if (leftEl) leftEl.remove();
+                        } catch (e) { /* ignore */ }
+                        // recalc badge counts
+                        try { updateCounts(); } catch (e) { }
                     }, 300);
                 } else {
                     showToast(result.message, 'error');
@@ -834,6 +1008,84 @@
         // =================================
         // FORM NAVIGATION
         // =================================
+        // Prepare client-side data for fields
+        const additionalFieldsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            additionalFields.Select(f => new { f.FieldId, f.DisplayName, f.FieldType, f.Step, f.IsRequired })
+        ));
+
+        const originalFields = {
+            1: ["Full Name","Age","Gender","Date of Birth"],
+            2: ["Has Allergies","Allergy Description","Current Medication","Height (cm)","Weight (kg)"],
+            3: ["Contact Name","Relationship","Phone Number","Has Alternative Contact","Alt Contact Name","Alt Phone Number"]
+        };
+
+        function updateFieldsList(step) {
+            const container = document.getElementById('fieldsList');
+            const stepNameEl = document.getElementById('currentStepName');
+            const names = {
+                1: 'PERSONAL INFORMATION',
+                2: 'HEALTH DETAILS',
+                3: 'EMERGENCY CONTACT'
+            };
+
+            if (stepNameEl) stepNameEl.textContent = names[step] || '';
+
+            // Clear existing list
+            container.innerHTML = '';
+
+            // Add original fields
+            (originalFields[step] || []).forEach((name, idx) => {
+                const div = document.createElement('div');
+                div.className = 'field-item' + (idx === 1 && step === 1 ? ' active' : '');
+                div.innerHTML = `<span class="drag-handle" aria-hidden="true"></span><span>${name}</span>`;
+                div.addEventListener('click', function() {
+                    container.querySelectorAll('.field-item').forEach(el => el.classList.remove('active'));
+                    this.classList.add('active');
+                });
+                container.appendChild(div);
+            });
+
+            // Add additional fields dynamically
+            additionalFieldsData.filter(f => f.Step === step).forEach(f => {
+                const div = document.createElement('div');
+                div.className = 'field-item';
+                div.setAttribute('data-field-id', f.FieldId);
+                div.innerHTML = `<span class="drag-handle" aria-hidden="true"></span><span>${f.DisplayName}</span>`;
+                div.addEventListener('click', function() {
+                    container.querySelectorAll('.field-item').forEach(el => el.classList.remove('active'));
+                    this.classList.add('active');
+                });
+                container.appendChild(div);
+            });
+        }
+
+        // Show/hide AllergyDescription based on HasAllergies select value
+        function updateAllergyVisibility() {
+            const sel = document.getElementById('HasAllergiesSelect');
+            const group = document.getElementById('allergyDescriptionGroup');
+            if (!group) return;
+            const val = sel ? String(sel.value).toLowerCase() : '';
+            if (val === 'true') {
+                group.classList.remove('d-none');
+            } else {
+                group.classList.add('d-none');
+            }
+        }
+
+        // Update step count badges (original + dynamic)
+        function updateCounts() {
+            const counts = {
+                1: (originalFields[1] ? originalFields[1].length : 0) + additionalFieldsData.filter(f => f.Step === 1).length,
+                2: (originalFields[2] ? originalFields[2].length : 0) + additionalFieldsData.filter(f => f.Step === 2).length,
+                3: (originalFields[3] ? originalFields[3].length : 0) + additionalFieldsData.filter(f => f.Step === 3).length,
+            };
+
+            Object.keys(counts).forEach(k => {
+                const el = document.getElementById(`step${k}Count`);
+                if (el) el.textContent = `${counts[k]} fields`;
+            });
+        }
+
         function switchStep(step) {
             // Hide all steps
             document.querySelectorAll('.form-step').forEach(s => s.classList.add('hidden'));
@@ -850,6 +1102,12 @@
             if (stepTab) {
                 stepTab.classList.add('active');
             }
+
+            // Update left-side fields list
+            updateFieldsList(step);
+
+            // If we switched to step 2, ensure allergy visibility is correct
+            try { updateAllergyVisibility(); } catch (e) { }
         }
 
         // =================================
@@ -912,6 +1170,9 @@
             // Initialize step 1
             switchStep(1);
 
+            // populate counts on load
+            try { updateCounts(); } catch (e) { }
+
             // Open modal button
             document.getElementById('openModalBtn').addEventListener('click', modalOpenHandler);
 
@@ -963,8 +1224,17 @@
                 toggleCheckbox('conditional');
             });
 
+            // HasAllergies select change handler
+            const hasAllergiesSel = document.getElementById('HasAllergiesSelect');
+            if (hasAllergiesSel) {
+                hasAllergiesSel.addEventListener('change', updateAllergyVisibility);
+            }
+
             // Enter key in modal input
             document.getElementById('fieldLabelInput').addEventListener('keydown', handleModalEnterKey);
+
+            // Ensure allergy visibility is correct on load
+            try { updateAllergyVisibility(); } catch (e) { }
 
             // Escape key to close modal
             document.addEventListener('keydown', handleEscapeKey);

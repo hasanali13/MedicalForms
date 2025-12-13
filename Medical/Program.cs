@@ -7,7 +7,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<MedicalContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("MedicalContext"),
-        sqlServerOptions => sqlServerOptions.EnableRetryOnFailure()
+        sqlServerOptions => {
+            sqlServerOptions.EnableRetryOnFailure();
+            // Increase command timeout (seconds) to avoid post-login timeout on slow/loaded servers
+            sqlServerOptions.CommandTimeout(60);
+        }
     )
 );
 

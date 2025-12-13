@@ -47,6 +47,7 @@ namespace Medical.Controllers
                 {
                     model.ViewPublicFormId = Guid.NewGuid();
                     model.CreatedAt = DateTime.UtcNow;
+                    model.IsDeleted = false;
 
                     // Get additional fields configuration
                     var configForm = GetOrCreateConfigForm();
@@ -254,12 +255,53 @@ namespace Medical.Controllers
             }
         }
 
+        // Dashboard - Statistics & Overview
+        public async Task<IActionResult> Dashboard()
+        {
+            ViewBag.ActiveMenu = "Dashboard";
+
+            var allForms = await _context.ViewPublicForm
+                .Where(f => f.FullName != null && f.IsDeleted != true)
+                .OrderByDescending(f => f.CreatedAt)
+                .ToListAsync();
+
+            var viewModel = new Medical.Models.ViewModels.DashboardViewModel
+            {
+                TotalSubmissions = allForms.Count,
+                TodaySubmissions = allForms.Count(f => f.CreatedAt.Date == DateTime.UtcNow.Date),
+                LastSubmission = allForms.FirstOrDefault(),
+                RecentSubmissions = allForms.Take(5).ToList(),
+                Last7DaysStats = allForms
+                    .Where(f => f.CreatedAt >= DateTime.UtcNow.AddDays(-7))
+                    .GroupBy(f => f.CreatedAt.Date)
+                    .Select(g => new Medical.Models.ViewModels.DailySubmissionStat 
+                    { 
+                        Date = g.Key, 
+                        Count = g.Count() 
+                    })
+                    .OrderBy(s => s.Date)
+                    .ToList()
+            };
+
+            // Fill in missing days for the chart
+            var stats = new List<Medical.Models.ViewModels.DailySubmissionStat>();
+            for (int i = 6; i >= 0; i--)
+            {
+                var date = DateTime.UtcNow.Date.AddDays(-i);
+                var existing = viewModel.Last7DaysStats.FirstOrDefault(s => s.Date == date);
+                stats.Add(existing ?? new Medical.Models.ViewModels.DailySubmissionStat { Date = date, Count = 0 });
+            }
+            viewModel.Last7DaysStats = stats;
+
+            return View(viewModel);
+        }
+
         // Get all form submissions
         public async Task<IActionResult> Index()
         {
             ViewBag.ActiveMenu = "ViewForms";
             var submissions = await _context.ViewPublicForm
-                .Where(f => f.FullName != null) // Only actual submissions
+                .Where(f => f.FullName != null && f.IsDeleted != true) // Only actual submissions and not deleted
                 .OrderByDescending(f => f.CreatedAt)
                 .ToListAsync();
             return View(submissions);
@@ -273,7 +315,7 @@ namespace Medical.Controllers
             var form = await _context.ViewPublicForm
                 .FirstOrDefaultAsync(x => x.ViewPublicFormId == id);
 
-            if (form == null) return NotFound();
+            if (form == null || form.IsDeleted == true) return NotFound();
 
             // Parse additional fields data
             if (!string.IsNullOrEmpty(form.AdditionalFieldsJson))
@@ -305,7 +347,9 @@ namespace Medical.Controllers
             var form = await _context.ViewPublicForm
                 .FirstOrDefaultAsync(x => x.ViewPublicFormId == id);
 
-            if (form == null) return NotFound();
+
+
+            if (form == null || form.IsDeleted == true) return NotFound();
 
             ViewBag.ActiveMenu = "ViewForms";
             return View(form);
@@ -319,7 +363,8 @@ namespace Medical.Controllers
 
             if (form != null)
             {
-                _context.ViewPublicForm.Remove(form);
+                form.IsDeleted = true;
+                _context.ViewPublicForm.Update(form);
                 await _context.SaveChangesAsync();
             }
 
@@ -341,7 +386,8 @@ namespace Medical.Controllers
                     ViewPublicFormId = Guid.NewGuid(),
                     CreatedAt = DateTime.UtcNow,
                     FormVersion = 1,
-                    AdditionalFieldsJson = "[]"
+                    AdditionalFieldsJson = "[]",
+                    IsDeleted = false
                 };
                 _context.ViewPublicForm.Add(configForm);
                 _context.SaveChanges();
