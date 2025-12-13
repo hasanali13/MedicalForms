@@ -33,7 +33,11 @@ namespace Medical.Controllers
                 .ThenBy(f => f.DisplayOrder)
                 .ToList();
 
-            return View(new ViewPublicForm());
+            var model = new ViewPublicForm();
+            // Load labels from config
+            model.FieldLabels = configForm.FieldLabels;
+            
+            return View(model);
         }
 
         // POST: Create Multi-step Form - FIXED
@@ -252,6 +256,36 @@ namespace Medical.Controllers
             catch (Exception ex)
             {
                 return Json(new { success = false, message = $"Error: {ex.Message}" });
+            }
+        }
+
+        // AJAX: Update field label
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateFieldLabel([FromBody] UpdateLabelRequest request)
+        {
+            try
+            {
+                var configForm = GetOrCreateConfigForm();
+                var labels = configForm.FieldLabels;
+                
+                if (labels.ContainsKey(request.FieldKey))
+                {
+                    labels[request.FieldKey] = request.Label;
+                    configForm.FieldLabels = labels; // Triggers JSON serialization
+                    configForm.FormVersion++;
+                    
+                    _context.ViewPublicForm.Update(configForm);
+                    await _context.SaveChangesAsync();
+                    
+                    return Json(new { success = true, message = "Label updated" });
+                }
+                
+                return Json(new { success = false, message = "Field key not found" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
             }
         }
 
@@ -479,6 +513,12 @@ namespace Medical.Controllers
     public class DeleteFieldRequest
     {
         public Guid FieldId { get; set; }
+    }
+
+    public class UpdateLabelRequest
+    {
+        public string FieldKey { get; set; } = string.Empty;
+        public string Label { get; set; } = string.Empty;
     }
 
     // Model for storing additional field values

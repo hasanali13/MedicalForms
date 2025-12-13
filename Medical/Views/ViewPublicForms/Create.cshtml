@@ -309,16 +309,25 @@
 
     .left-steps {
         width: 250px;
-        background: #f8f9fa;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        background: transparent; /* Remove gray background from wrapper */
+        padding: 0;
+    }
+
+    .left-panel-container {
+        background: white;
+        border: 1px solid #dee2e6;
         border-radius: 8px;
         padding: 20px;
     }
 
     /* Fields list under steps (bottom area) */
     .fields-section {
-        margin-top: 18px;
-        padding-top: 12px;
-        border-top: 1px solid #E6EEF8;
+        margin-top: 0; /* Handled by gap */
+        padding-top: 0;
+        border-top: none;
     }
 
     .fields-section h6 {
@@ -456,9 +465,10 @@
 
     .field-properties-card {
         width: 300px;
-        background: #f8f9fa;
+        background: white;
         border-radius: 8px;
         padding: 20px;
+        border: 1px solid #dee2e6;
     }
 
     .fp-header {
@@ -481,6 +491,16 @@
         right: 0;
         bottom: 0;
         z-index: -1;
+    }
+
+    .active-field {
+        border: 2px solid #1F6DFF;
+        border-radius: 8px;
+        padding: 8px;
+        margin: -10px; /* Offset padding */
+        margin-bottom: 6px; /* Adjust spacing */
+        background-color: rgba(31, 109, 255, 0.05);
+        cursor: pointer;
     }
 </style>
 
@@ -506,38 +526,42 @@
     <div class="builder-layout">
         <!-- LEFT STEPS PANEL -->
         <div class="left-steps">
-            <h6 class="text-muted mb-3">FORM STEPS</h6>
-            <div id="step1Tab" class="step-item active" data-step="1">
-                <div class="step-pill">
-                    <div>
-                        <div class="step-title">Step 1</div>
-                        <div class="step-subtitle">Personal Information</div>
+            <!-- Top Container: Steps -->
+            <div class="left-panel-container">
+                <h6 class="text-muted mb-3">FORM STEPS</h6>
+                <div id="step1Tab" class="step-item active" data-step="1">
+                    <div class="step-pill">
+                        <div>
+                            <div class="step-title">Step 1</div>
+                            <div class="step-subtitle">Personal Information</div>
+                        </div>
+                        <div class="step-count" id="step1Count">0 fields</div>
                     </div>
-                    <div class="step-count" id="step1Count">0 fields</div>
+                </div>
+
+                <div id="step2Tab" class="step-item" data-step="2">
+                    <div class="step-pill">
+                        <div>
+                            <div class="step-title">Step 2</div>
+                            <div class="step-subtitle">Health Details</div>
+                        </div>
+                        <div class="step-count" id="step2Count">0 fields</div>
+                    </div>
+                </div>
+
+                <div id="step3Tab" class="step-item" data-step="3">
+                    <div class="step-pill">
+                        <div>
+                            <div class="step-title">Step 3</div>
+                            <div class="step-subtitle">Emergency Contact</div>
+                        </div>
+                        <div class="step-count" id="step3Count">0 fields</div>
+                    </div>
                 </div>
             </div>
 
-            <div id="step2Tab" class="step-item" data-step="2">
-                <div class="step-pill">
-                    <div>
-                        <div class="step-title">Step 2</div>
-                        <div class="step-subtitle">Health Details</div>
-                    </div>
-                    <div class="step-count" id="step2Count">0 fields</div>
-                </div>
-            </div>
-
-            <div id="step3Tab" class="step-item" data-step="3">
-                <div class="step-pill">
-                    <div>
-                        <div class="step-title">Step 3</div>
-                        <div class="step-subtitle">Emergency Contact</div>
-                    </div>
-                    <div class="step-count" id="step3Count">0 fields</div>
-                </div>
-            </div>
-
-            <div class="fields-section">
+            <!-- Bottom Container: Fields -->
+            <div class="left-panel-container fields-section">
                 <h6>FIELDS IN <span id="currentStepName">PERSONAL INFORMATION</span></h6>
 
                 <div class="fields-list" id="fieldsList">
@@ -694,28 +718,28 @@
                 <h4>Emergency Contact</h4><hr />
 
                 <!-- Original Fields -->
-                <div class="mb-3">
-                    <label asp-for="ContactName" class="form-label"></label>
+                <div class="mb-3" data-field-key="ContactName">
+                    <label asp-for="ContactName" class="form-label">@Model.FieldLabels["ContactName"]</label>
                     <input asp-for="ContactName" class="form-control" />
                 </div>
-                <div class="mb-3">
-                    <label asp-for="Relationship" class="form-label"></label>
+                <div class="mb-3" data-field-key="Relationship">
+                    <label asp-for="Relationship" class="form-label">@Model.FieldLabels["Relationship"]</label>
                     <input asp-for="Relationship" class="form-control" />
                 </div>
-                <div class="mb-3">
-                    <label asp-for="PhoneNumber" class="form-label"></label>
+                <div class="mb-3" data-field-key="PhoneNumber">
+                    <label asp-for="PhoneNumber" class="form-label">@Model.FieldLabels["PhoneNumber"]</label>
                     <input asp-for="PhoneNumber" class="form-control" />
                 </div>
-                <div class="mb-3">
-                    <label asp-for="HasAlternativeContact" class="form-label"></label>
+                <div class="mb-3" data-field-key="HasAlternativeContact">
+                    <label asp-for="HasAlternativeContact" class="form-label">@Model.FieldLabels["HasAlternativeContact"]</label>
                     <input asp-for="HasAlternativeContact" class="form-control" />
                 </div>
-                <div class="mb-3">
-                    <label asp-for="AltContactName" class="form-label"></label>
+                <div class="mb-3" data-field-key="AltContactName">
+                    <label asp-for="AltContactName" class="form-label">@Model.FieldLabels["AltContactName"]</label>
                     <input asp-for="AltContactName" class="form-control" />
                 </div>
-                <div class="mb-3">
-                    <label asp-for="AltPhoneNumber" class="form-label"></label>
+                <div class="mb-3" data-field-key="AltPhoneNumber">
+                    <label asp-for="AltPhoneNumber" class="form-label">@Model.FieldLabels["AltPhoneNumber"]</label>
                     <input asp-for="AltPhoneNumber" class="form-control" placeholder="Alternative phone" />
                 </div>
 
@@ -1249,5 +1273,75 @@
                 });
             });
         });
+
+        // =================================
+        // FIELD PROPERTIES & EDITING
+        // =================================
+        let activeFieldKey = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const fpLabelInput = document.getElementById('fpLabel');
+            
+            // Add click handlers to static fields
+            document.querySelectorAll('[data-field-key]').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    // Prevent bubbling if clicking input
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
+                    // Deselect others
+                    document.querySelectorAll('[data-field-key]').forEach(f => f.classList.remove('active-field'));
+                    
+                    // Select current
+                    el.classList.add('active-field');
+                    activeFieldKey = el.getAttribute('data-field-key');
+                    
+                    // Populate Properties Panel
+                    const currentLabel = el.querySelector('label').innerText;
+                    fpLabelInput.value = currentLabel;
+                    
+                    // Show valid properties for static fields (mostly just label)
+                    // You could hide/show other inputs here based on what's editable
+                });
+            });
+
+            // Handle Label Change
+            fpLabelInput.addEventListener('input', (e) => {
+                if (!activeFieldKey) return;
+                
+                const newLabel = e.target.value;
+                const fieldContainer = document.querySelector(`[data-field-key="${activeFieldKey}"]`);
+                if (fieldContainer) {
+                    fieldContainer.querySelector('label').innerText = newLabel;
+                }
+                
+                // Debounce save to server
+                clearTimeout(window.saveLabelTimeout);
+                window.saveLabelTimeout = setTimeout(() => {
+                    saveFieldLabel(activeFieldKey, newLabel);
+                }, 500);
+            });
+        });
+
+        async function saveFieldLabel(key, label) {
+            try {
+                const response = await fetch('/ViewPublicForms/UpdateFieldLabel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    },
+                    body: JSON.stringify({ fieldKey: key, label: label })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showToast('Label updated and saved', 'success');
+                } else {
+                    showToast(result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error saving label:', error);
+            }
+        }
     </script>
 }
