@@ -502,6 +502,162 @@
         background-color: rgba(31, 109, 255, 0.05);
         cursor: pointer;
     }
+
+    /* Field Properties Panel Enhancements */
+    .fp-group {
+        margin-bottom: 15px;
+    }
+
+    .fp-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: #475467;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .fp-input, .fp-select {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #D0D5DD;
+        border-radius: 6px;
+        font-size: 14px;
+        background: white;
+        transition: border-color 0.2s;
+    }
+
+    .fp-input:focus, .fp-select:focus {
+        outline: none;
+        border-color: #1F6DFF;
+        box-shadow: 0 0 0 3px rgba(31, 109, 255, 0.1);
+    }
+
+    .fp-input:disabled, .fp-select:disabled {
+        background: #F9FAFB;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .fp-toggle-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-top: 1px solid #EAECF0;
+    }
+
+    .fp-toggle-row span {
+        font-size: 13px;
+        color: #344054;
+        font-weight: 500;
+    }
+
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #D0D5DD;
+        transition: 0.3s;
+        border-radius: 24px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+    }
+
+    input:checked + .slider {
+        background-color: #1F6DFF;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(20px);
+    }
+
+    .fp-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #EAECF0;
+    }
+
+    .fp-btn-update, .fp-btn-delete {
+        flex: 1;
+        padding: 10px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .fp-btn-update {
+        background: #1F6DFF;
+        color: white;
+    }
+
+    .fp-btn-update:hover:not(:disabled) {
+        background: #0D5CE1;
+    }
+
+    .fp-btn-delete {
+        background: #FFFFFF;
+        color: #F04438;
+        border: 1px solid #F04438;
+    }
+
+    .fp-btn-delete:hover:not(:disabled) {
+        background: #FEF3F2;
+    }
+
+    .fp-btn-update:disabled, .fp-btn-delete:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    .field-item.selected {
+        border-color: #1F6DFF;
+        background: #F3F9FF;
+        box-shadow: 0 0 0 2px rgba(31, 109, 255, 0.1);
+    }
+
+    .field-preview-selected {
+        outline: 2px solid #1F6DFF;
+        outline-offset: 2px;
+        background-color: rgba(31, 109, 255, 0.02);
+        border-radius: 8px;
+    }
 </style>
 
 <!-- TOP HEADER -->
@@ -566,19 +722,19 @@
 
                 <div class="fields-list" id="fieldsList">
                     <!-- Render original fields for step 1 -->
-                    <div class="field-item">
+                    <div class="field-item" data-field-type="static" data-field-key="FullName">
                         <span class="drag-handle" aria-hidden="true"></span>
                         <span>Full Name</span>
                     </div>
-                    <div class="field-item active">
+                    <div class="field-item" data-field-type="static" data-field-key="Age">
                         <span class="drag-handle" aria-hidden="true"></span>
                         <span>Age</span>
                     </div>
-                    <div class="field-item">
+                    <div class="field-item" data-field-type="static" data-field-key="Gender">
                         <span class="drag-handle" aria-hidden="true"></span>
                         <span>Gender</span>
                     </div>
-                    <div class="field-item">
+                    <div class="field-item" data-field-type="static" data-field-key="DateOfBirth">
                         <span class="drag-handle" aria-hidden="true"></span>
                         <span>Date of Birth</span>
                     </div>
@@ -778,9 +934,11 @@
             <div class="fp-header">
                 <span class="fp-title">FIELD PROPERTIES</span>
             </div>
+            <input type="hidden" id="fpFieldId" />
+            <input type="hidden" id="fpFieldType" />
             <div class="fp-group">
                 <label>Field Label</label>
-                <input id="fpLabel" type="text" class="fp-input" />
+                <input id="fpLabel" type="text" class="fp-input" placeholder="Select a field..." />
             </div>
             <div class="fp-group">
                 <label>Field Type</label>
@@ -788,6 +946,11 @@
                     <option value="text">Text</option>
                     <option value="number">Number</option>
                     <option value="date">Date</option>
+                    <option value="email">Email</option>
+                    <option value="tel">Phone</option>
+                    <option value="textarea">Text Area</option>
+                    <option value="select">Dropdown</option>
+                    <option value="checkbox">Checkbox</option>
                 </select>
             </div>
             <div class="fp-group">
@@ -800,7 +963,7 @@
             </div>
             <div class="fp-group">
                 <label>Placeholder</label>
-                <input id="fpPlaceholder" type="text" class="fp-input" />
+                <input id="fpPlaceholder" type="text" class="fp-input" placeholder="Optional" />
             </div>
             <div class="fp-toggle-row">
                 <span>Required Field</span>
@@ -815,6 +978,14 @@
                     <input type="checkbox" id="fpConditional">
                     <span class="slider"></span>
                 </label>
+            </div>
+            <div class="fp-actions">
+                <button type="button" id="fpUpdateBtn" class="fp-btn-update" disabled>
+                    <i class="fas fa-save"></i> Update
+                </button>
+                <button type="button" id="fpDeleteBtn" class="fp-btn-delete" disabled>
+                    <i class="fas fa-trash"></i> Delete
+                </button>
             </div>
         </div>
     </div>
@@ -1034,7 +1205,7 @@
         // =================================
         // Prepare client-side data for fields
         const additionalFieldsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-            additionalFields.Select(f => new { f.FieldId, f.DisplayName, f.FieldType, f.Step, f.IsRequired })
+            additionalFields.Select(f => new { f.FieldId, f.DisplayName, f.FieldType, f.Step, f.IsRequired, f.IsConditional, f.Placeholder })
         ));
 
         const originalFields = {
@@ -1058,14 +1229,19 @@
             container.innerHTML = '';
 
             // Add original fields
+            const fieldKeyMap = {
+                1: {"Full Name": "FullName", "Age": "Age", "Gender": "Gender", "Date of Birth": "DateOfBirth"},
+                2: {"Has Allergies": "HasAllergies", "Allergy Description": "AllergyDescription", "Current Medication": "CurrentMedication", "Height (cm)": "HeightCm", "Weight (kg)": "WeightKg"},
+                3: {"Contact Name": "ContactName", "Relationship": "Relationship", "Phone Number": "PhoneNumber", "Has Alternative Contact": "HasAlternativeContact", "Alt Contact Name": "AltContactName", "Alt Phone Number": "AltPhoneNumber"}
+            };
+            
             (originalFields[step] || []).forEach((name, idx) => {
                 const div = document.createElement('div');
-                div.className = 'field-item' + (idx === 1 && step === 1 ? ' active' : '');
+                div.className = 'field-item';
+                div.setAttribute('data-field-type', 'static');
+                const fieldKey = fieldKeyMap[step] ? fieldKeyMap[step][name] : name.replace(/\s+/g, '');
+                div.setAttribute('data-field-key', fieldKey);
                 div.innerHTML = `<span class="drag-handle" aria-hidden="true"></span><span>${name}</span>`;
-                div.addEventListener('click', function() {
-                    container.querySelectorAll('.field-item').forEach(el => el.classList.remove('active'));
-                    this.classList.add('active');
-                });
                 container.appendChild(div);
             });
 
@@ -1073,12 +1249,9 @@
             additionalFieldsData.filter(f => f.Step === step).forEach(f => {
                 const div = document.createElement('div');
                 div.className = 'field-item';
+                div.setAttribute('data-field-type', 'dynamic');
                 div.setAttribute('data-field-id', f.FieldId);
                 div.innerHTML = `<span class="drag-handle" aria-hidden="true"></span><span>${f.DisplayName}</span>`;
-                div.addEventListener('click', function() {
-                    container.querySelectorAll('.field-item').forEach(el => el.classList.remove('active'));
-                    this.classList.add('active');
-                });
                 container.appendChild(div);
             });
         }
@@ -1274,74 +1447,319 @@
             });
         });
 
-        // =================================
-        // FIELD PROPERTIES & EDITING
-        // =================================
-        let activeFieldKey = null;
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const fpLabelInput = document.getElementById('fpLabel');
+        // =================================
+        // FIELD SELECTION & PROPERTIES PANEL
+        // =================================
+        let selectedFieldData = null;
+
+        function clearFieldSelection() {
+            // Clear visual selection
+            document.querySelectorAll('.field-item').forEach(el => el.classList.remove('selected'));
+            document.querySelectorAll('.mb-3').forEach(el => el.classList.remove('field-preview-selected'));
+            document.querySelectorAll('.additional-field-container').forEach(el => el.classList.remove('field-preview-selected'));
             
-            // Add click handlers to static fields
-            document.querySelectorAll('[data-field-key]').forEach(el => {
-                el.addEventListener('click', (e) => {
-                    // Prevent bubbling if clicking input
-                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+            // Clear data
+            selectedFieldData = null;
+            
+            // Reset and disable property panel
+            document.getElementById('fpFieldId').value = '';
+            document.getElementById('fpFieldType').value = '';
+            document.getElementById('fpLabel').value = '';
+            document.getElementById('fpType').value = 'text';
+            document.getElementById('fpStep').value = '1';
+            document.getElementById('fpPlaceholder').value = '';
+            document.getElementById('fpRequired').checked = false;
+            document.getElementById('fpConditional').checked = false;
+            document.getElementById('fpUpdateBtn').disabled = true;
+            document.getElementById('fpDeleteBtn').disabled = true;
+            
+            // Enable all inputs
+            document.getElementById('fpLabel').disabled = false;
+            document.getElementById('fpType').disabled = false;
+            document.getElementById('fpStep').disabled = false;
+            document.getElementById('fpPlaceholder').disabled = false;
+        }
 
-                    // Deselect others
-                    document.querySelectorAll('[data-field-key]').forEach(f => f.classList.remove('active-field'));
-                    
-                    // Select current
-                    el.classList.add('active-field');
-                    activeFieldKey = el.getAttribute('data-field-key');
-                    
-                    // Populate Properties Panel
-                    const currentLabel = el.querySelector('label').innerText;
-                    fpLabelInput.value = currentLabel;
-                    
-                    // Show valid properties for static fields (mostly just label)
-                    // You could hide/show other inputs here based on what's editable
-                });
-            });
+        function selectField(fieldData) {
+            clearFieldSelection();
+            selectedFieldData = fieldData;
+            
+            // Set hidden fields
+            document.getElementById('fpFieldId').value = fieldData.fieldId || '';
+            document.getElementById('fpFieldType').value = fieldData.fieldType; // 'static' or 'dynamic'
+            
+            // Populate property panel
+            document.getElementById('fpLabel').value = fieldData.displayName;
+            document.getElementById('fpType').value = fieldData.type || 'text';
+            document.getElementById('fpStep').value = fieldData.step || 1;
+            document.getElementById('fpPlaceholder').value = fieldData.placeholder || '';
+            document.getElementById('fpRequired').checked = fieldData.isRequired || false;
+            document.getElementById('fpConditional').checked = fieldData.isConditional || false;
+            
+            // Enable/disable based on field type
+            if (fieldData.fieldType === 'static') {
+                // Static fields: only label editable, no delete
+                document.getElementById('fpType').disabled = true;
+                document.getElementById('fpPlaceholder').disabled = true;
+                document.getElementById('fpUpdateBtn').disabled = false;
+                document.getElementById('fpDeleteBtn').disabled = true; // Cannot delete static fields
+            } else {
+                // Dynamic fields: everything editable
+                document.getElementById('fpType').disabled = false;
+                document.getElementById('fpPlaceholder').disabled = false;
+                document.getElementById('fpUpdateBtn').disabled = false;
+                document.getElementById('fpDeleteBtn').disabled = false;
+            }
+            
+            // Highlight in left list
+            if (fieldData.fieldType === 'static') {
+                const leftItem = document.querySelector(`.field-item[data-field-key="${fieldData.fieldKey}"]`);
+                if (leftItem) leftItem.classList.add('selected');
+            } else {
+                const leftItem = document.querySelector(`.field-item[data-field-id="${fieldData.fieldId}"]`);
+                if (leftItem) leftItem.classList.add('selected');
+            }
+            
+            // Highlight in preview (approximate - would need better selectors)
+            highlightPreviewField(fieldData);
+        }
 
-            // Handle Label Change
-            fpLabelInput.addEventListener('input', (e) => {
-                if (!activeFieldKey) return;
-                
-                const newLabel = e.target.value;
-                const fieldContainer = document.querySelector(`[data-field-key="${activeFieldKey}"]`);
-                if (fieldContainer) {
-                    fieldContainer.querySelector('label').innerText = newLabel;
+        function highlightPreviewField(fieldData) {
+            // For static fields, find by data-field-key in preview
+            if (fieldData.fieldType === 'static') {
+                const previewField = document.querySelector(`.form-step .mb-3[data-field-key="${fieldData.fieldKey}"]`);
+                if (previewField) previewField.classList.add('field-preview-selected');
+            } else {
+                // For dynamic fields, find by data-field-id
+                const previewField = document.querySelector(`.additional-field-container[data-field-id="${fieldData.fieldId}"]`);
+                if (previewField) previewField.classList.add('field-preview-selected');
+            }
+        }
+
+        // Update field via API
+        async function updateSelectedField() {
+            if (!selectedFieldData) {
+                showToast('No field selected', 'error');
+                return;
+            }
+
+            const updatedData = {
+                DisplayName: document.getElementById('fpLabel').value.trim(),
+                FieldType: document.getElementById('fpType').value,
+                Step: parseInt(document.getElementById('fpStep').value),
+                Placeholder: document.getElementById('fpPlaceholder').value.trim(),
+                IsRequired: document.getElementById('fpRequired').checked,
+                IsConditional: document.getElementById('fpConditional').checked
+            };
+
+            if (!updatedData.DisplayName) {
+                showToast('Field label is required', 'error');
+                return;
+            }
+
+            // If dynamic field, call UpdateAdditionalField
+            if (selectedFieldData.fieldType === 'dynamic') {
+                try {
+                    const response = await fetch('@Url.Action("UpdateAdditionalField", "ViewPublicForms")', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': getToken()
+                        },
+                        body: JSON.stringify({
+                            FieldId: selectedFieldData.fieldId,
+                            ...updatedData
+                        })
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        showToast(result.message, 'success');
+                        // Reload if step changed, otherwise just update UI
+                        if (updatedData.Step !== selectedFieldData.step) {
+                            setTimeout(() => location.reload(), 1000);
+                        } else {
+                            // Update left list
+                            const leftItem = document.querySelector(`.field-item[data-field-id="${selectedFieldData.fieldId}"]`);
+                            if (leftItem) {
+                                leftItem.querySelector('span:last-child').textContent = updatedData.DisplayName;
+                            }
+                            // Update preview label
+                            const previewField = document.querySelector(`.additional-field-container[data-field-id="${selectedFieldData.fieldId}"] label`);
+                            if (previewField) {
+                                previewField.childNodes[0].textContent = updatedData.DisplayName + ' ';
+                            }
+                            // Update selected field data
+                            selectedFieldData.displayName = updatedData.DisplayName;
+                            selectedFieldData.type = updatedData.FieldType;
+                            selectedFieldData.placeholder = updatedData.Placeholder;
+                            selectedFieldData.isRequired = updatedData.IsRequired;
+                            selectedFieldData.isConditional = updatedData.IsConditional;
+                        }
+                    } else {
+                        showToast(result.message, 'error');
+                    }
+                } catch (error) {
+                    showToast('Error updating field: ' + error.message, 'error');
                 }
-                
-                // Debounce save to server
-                clearTimeout(window.saveLabelTimeout);
-                window.saveLabelTimeout = setTimeout(() => {
-                    saveFieldLabel(activeFieldKey, newLabel);
-                }, 500);
-            });
-        });
+            } else {
+                // Static field - only update label via existing API
+                try {
+                    const response = await fetch('/ViewPublicForms/UpdateFieldLabel', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': getToken()
+                        },
+                        body: JSON.stringify({
+                            fieldKey: selectedFieldData.fieldKey,
+                            label: updatedData.DisplayName
+                        })
+                    });
 
-        async function saveFieldLabel(key, label) {
+                    const result = await response.json();
+                    if (result.success) {
+                        showToast('Label updated successfully', 'success');
+                        // Update left list
+                        const leftItem = document.querySelector(`.field-item[data-field-key="${selectedFieldData.fieldKey}"]`);
+                        if (leftItem) {
+                            leftItem.querySelector('span:last-child').textContent = updatedData.DisplayName;
+                        }
+                        // Update preview label
+                        const previewField = document.querySelector(`.mb-3[data-field-key="${selectedFieldData.fieldKey}"] label`);
+                        if (previewField) {
+                            previewField.textContent = updatedData.DisplayName;
+                        }
+                        selectedFieldData.displayName = updatedData.DisplayName;
+                    } else {
+                        showToast(result.message || 'Error updating label', 'error');
+                    }
+                } catch (error) {
+                    showToast('Error updating label: ' + error.message, 'error');
+                }
+            }
+        }
+
+        // Delete field via API (only for dynamic fields)
+        async function deleteSelectedField() {
+            if (!selectedFieldData || selectedFieldData.fieldType === 'static') {
+                showToast('Cannot delete static fields', 'error');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to delete "${selectedFieldData.displayName}"?`)) {
+                return;
+            }
+
             try {
-                const response = await fetch('/ViewPublicForms/UpdateFieldLabel', {
+                const response = await fetch('@Url.Action("DeleteAdditionalField", "ViewPublicForms")', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                        'RequestVerificationToken': getToken()
                     },
-                    body: JSON.stringify({ fieldKey: key, label: label })
+                    body: JSON.stringify({ FieldId: selectedFieldData.fieldId })
                 });
-                
+
                 const result = await response.json();
                 if (result.success) {
-                    showToast('Label updated and saved', 'success');
+                    showToast(result.message, 'success');
+                    
+                    // Remove from left list
+                    const leftItem = document.querySelector(`.field-item[data-field-id="${selectedFieldData.fieldId}"]`);
+                    if (leftItem) leftItem.remove();
+                    
+                    // Remove from preview
+                    const previewField = document.querySelector(`.additional-field-container[data-field-id="${selectedFieldData.fieldId}"]`);
+                    if (previewField) {
+                        previewField.style.transition = 'opacity 0.3s';
+                        previewField.style.opacity = '0';
+                        setTimeout(() => previewField.remove(), 300);
+                    }
+                    
+                    // Clear selection
+                    clearFieldSelection();
+                    
+                    // Update counts
+                    try { updateCounts(); } catch (e) { }
                 } else {
                     showToast(result.message, 'error');
                 }
             } catch (error) {
-                console.error('Error saving label:', error);
+                showToast('Error deleting field: ' + error.message, 'error');
             }
         }
+
+        // Initialize field selection system
+        document.addEventListener('DOMContentLoaded', () => {
+            // Update button click
+            document.getElementById('fpUpdateBtn').addEventListener('click', updateSelectedField);
+            
+            // Delete button click
+            document.getElementById('fpDeleteBtn').addEventListener('click', deleteSelectedField);
+            
+            // Click handlers will be added dynamically in updateFieldsList
+            setupFieldClickHandlers();
+        });
+
+        function setupFieldClickHandlers() {
+            // Handle clicks on field items in left list
+            document.querySelectorAll('.field-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    
+                    const fieldType = this.getAttribute('data-field-type');
+                    const fieldKey = this.getAttribute('data-field-key');
+                    const fieldId = this.getAttribute('data-field-id');
+                    const displayName = this.querySelector('span:last-child').textContent;
+                    
+                    if (fieldType === 'static') {
+                        // Find the actual field in preview to get current step
+                        let step = 1;
+                        const previewEl = document.querySelector(`.mb-3[data-field-key="${fieldKey}"]`);
+                        if (previewEl) {
+                            const stepContainer = previewEl.closest('.form-step');
+                            if (stepContainer) {
+                                step = parseInt(stepContainer.id.replace('step', '')) || 1;
+                            }
+                        }
+                        
+                        selectField({
+                            fieldType: 'static',
+                            fieldKey: fieldKey,
+                            displayName: displayName,
+                            type: 'text', // Default, can't really change for static
+                            step: step,
+                            placeholder: '',
+                            isRequired: false,
+                            isConditional: false
+                        });
+                    } else if (fieldType === 'dynamic' && fieldId) {
+                        // Find in additionalFieldsData
+                        const fieldData = additionalFieldsData.find(f => f.FieldId === fieldId);
+                        if (fieldData) {
+                            selectField({
+                                fieldType: 'dynamic',
+                                fieldId: fieldId,
+                                displayName: fieldData.DisplayName,
+                                type: fieldData.FieldType,
+                                step: fieldData.Step,
+                                placeholder: fieldData.Placeholder || '',
+                                isRequired: fieldData.IsRequired || false,
+                                isConditional: fieldData.IsConditional || false
+                            });
+                        }
+                    }
+                });
+            });
+        }
+
+        // Update the existing updateFieldsList to maintain click handlers
+        const originalUpdateFieldsList = updateFieldsList;
+        updateFieldsList = function(step) {
+            originalUpdateFieldsList(step);
+            setupFieldClickHandlers();
+        };
     </script>
 }

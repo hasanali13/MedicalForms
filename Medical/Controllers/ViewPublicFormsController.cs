@@ -224,6 +224,62 @@ namespace Medical.Controllers
             }
         }
 
+        // AJAX: Update additional field
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateAdditionalField([FromBody] UpdateFieldRequest request)
+        {
+            try
+            {
+                var configForm = GetOrCreateConfigForm();
+                var existingFields = configForm.AdditionalFields ?? new List<AdditionalField>();
+
+                var fieldToUpdate = existingFields.FirstOrDefault(f => f.FieldId == request.FieldId);
+                if (fieldToUpdate == null)
+                {
+                    return Json(new { success = false, message = "Field not found" });
+                }
+
+                // Update field properties
+                fieldToUpdate.DisplayName = request.DisplayName.Trim();
+                fieldToUpdate.FieldType = request.FieldType;
+                fieldToUpdate.Step = request.Step;
+                fieldToUpdate.Placeholder = string.IsNullOrWhiteSpace(request.Placeholder) ? null : request.Placeholder.Trim();
+                fieldToUpdate.IsRequired = request.IsRequired;
+                fieldToUpdate.IsConditional = request.IsConditional;
+                fieldToUpdate.UpdatedAt = DateTime.UtcNow;
+
+                configForm.AdditionalFields = existingFields;
+                configForm.FormVersion++;
+                configForm.CreatedAt = DateTime.UtcNow;
+
+                _context.ViewPublicForm.Update(configForm);
+                await _context.SaveChangesAsync();
+
+                return Json(new
+                {
+                    success = true,
+                    message = "Field updated successfully!",
+                    field = new
+                    {
+                        fieldId = fieldToUpdate.FieldId,
+                        displayName = fieldToUpdate.DisplayName,
+                        fieldName = fieldToUpdate.FieldName,
+                        fieldType = fieldToUpdate.FieldType,
+                        step = fieldToUpdate.Step,
+                        placeholder = fieldToUpdate.Placeholder,
+                        isRequired = fieldToUpdate.IsRequired,
+                        isConditional = fieldToUpdate.IsConditional,
+                        inputType = fieldToUpdate.InputType
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error: {ex.Message}" });
+            }
+        }
+
         // AJAX: Delete additional field
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -513,6 +569,17 @@ namespace Medical.Controllers
     public class DeleteFieldRequest
     {
         public Guid FieldId { get; set; }
+    }
+
+    public class UpdateFieldRequest
+    {
+        public Guid FieldId { get; set; }
+        public string DisplayName { get; set; } = string.Empty;
+        public string FieldType { get; set; } = "text";
+        public int Step { get; set; } = 1;
+        public string? Placeholder { get; set; }
+        public bool IsRequired { get; set; }
+        public bool IsConditional { get; set; }
     }
 
     public class UpdateLabelRequest
