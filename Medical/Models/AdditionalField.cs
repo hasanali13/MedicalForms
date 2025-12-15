@@ -76,5 +76,31 @@ namespace Medical.Models
             "file" => "file",
             _ => "text"
         };
+
+        [NotMapped]
+        public ConditionalLogic? ConditionalLogic
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(ConditionalLogicJson))
+                    return null;
+
+                try
+                {
+                    return System.Text.Json.JsonSerializer.Deserialize<ConditionalLogic>(ConditionalLogicJson);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+            set => ConditionalLogicJson = value == null ? null : System.Text.Json.JsonSerializer.Serialize(value);
+        }
+    }
+
+    public class ConditionalLogic
+    {
+        public string DependsOnFieldKey { get; set; } = string.Empty;
+        public string ShowWhenValue { get; set; } = string.Empty;
     }
 }

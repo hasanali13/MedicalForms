@@ -185,6 +185,7 @@ namespace Medical.Controllers
                     Placeholder = string.IsNullOrWhiteSpace(request.Placeholder) ? null : request.Placeholder.Trim(),
                     IsRequired = request.IsRequired,
                     IsConditional = request.IsConditional,
+                    ConditionalLogicJson = request.ConditionalLogicJson,
                     CreatedAt = DateTime.UtcNow,
                     CreatedBy = User.Identity?.Name ?? "System",
                     IsActive = true,
@@ -247,6 +248,7 @@ namespace Medical.Controllers
                 fieldToUpdate.Placeholder = string.IsNullOrWhiteSpace(request.Placeholder) ? null : request.Placeholder.Trim();
                 fieldToUpdate.IsRequired = request.IsRequired;
                 fieldToUpdate.IsConditional = request.IsConditional;
+                fieldToUpdate.ConditionalLogicJson = request.ConditionalLogicJson;
                 fieldToUpdate.UpdatedAt = DateTime.UtcNow;
 
                 configForm.AdditionalFields = existingFields;
@@ -564,6 +566,7 @@ namespace Medical.Controllers
         public string? Placeholder { get; set; }
         public bool IsRequired { get; set; }
         public bool IsConditional { get; set; }
+        public string? ConditionalLogicJson { get; set; }
     }
 
     public class DeleteFieldRequest
@@ -580,6 +583,7 @@ namespace Medical.Controllers
         public string? Placeholder { get; set; }
         public bool IsRequired { get; set; }
         public bool IsConditional { get; set; }
+        public string? ConditionalLogicJson { get; set; }
     }
 
     public class UpdateLabelRequest

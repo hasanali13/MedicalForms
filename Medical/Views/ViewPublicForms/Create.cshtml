@@ -979,6 +979,24 @@
                     <span class="slider"></span>
                 </label>
             </div>
+            
+            <!-- Conditional Logic Configuration (shows when fpConditional is checked) -->
+            <div id="conditionalConfig" class="fp-conditional-config" style="display: none; padding: 15px; background: #F9FAFB; border-radius: 6px; margin-top: 10px;">
+                <div class="fp-group">
+                    <label>Show When Field</label>
+                    <select id="fpDependsOnField" class="fp-select">
+                        <option value="">Select field...</option>
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                <div class="fp-group">
+                    <label>Equals Value</label>
+                    <input id="fpShowWhenValue" type="text" class="fp-input" placeholder="e.g., Yes, true, Male" />
+                    <small style="font-size: 11px; color: #667085; display: block; margin-top: 4px;">
+                        This field will only show when the selected field has this value
+                    </small>
+                </div>
+            </div>
             <div class="fp-actions">
                 <button type="button" id="fpUpdateBtn" class="fp-btn-update" disabled>
                     <i class="fas fa-save"></i> Update
@@ -1205,7 +1223,7 @@
         // =================================
         // Prepare client-side data for fields
         const additionalFieldsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-            additionalFields.Select(f => new { f.FieldId, f.DisplayName, f.FieldType, f.Step, f.IsRequired, f.IsConditional, f.Placeholder })
+            additionalFields.Select(f => new { f.FieldId, f.DisplayName, f.FieldType, f.Step, f.IsRequired, f.IsConditional, f.Placeholder, f.ConditionalLogicJson })
         ));
 
         const originalFields = {
@@ -1497,6 +1515,21 @@
             document.getElementById('fpRequired').checked = fieldData.isRequired || false;
             document.getElementById('fpConditional').checked = fieldData.isConditional || false;
             
+            // Handle conditional configuration
+            const conditionalConfig = document.getElementById('conditionalConfig');
+            if (fieldData.isConditional && fieldData.conditionalLogic) {
+                conditionalConfig.style.display = 'block';
+                document.getElementById('fpDependsOnField').value = fieldData.conditionalLogic.dependsOnFieldKey || '';
+                document.getElementById('fpShowWhenValue').value = fieldData.conditionalLogic.showWhenValue || '';
+            } else {
+                conditionalConfig.style.display = fieldData.isConditional ? 'block' : 'none';
+                document.getElementById('fpDependsOnField').value = '';
+                document.getElementById('fpShowWhenValue').value = '';
+            }
+            
+            // Populate depends-on dropdown with available fields
+            populateDependsOnFields(fieldData.step || 1, fieldData.fieldId);
+            
             // Enable/disable based on field type
             if (fieldData.fieldType === 'static') {
                 // Static fields: only label editable, no delete
@@ -1537,6 +1570,140 @@
             }
         }
 
+        // Build new input elements for dynamic fields when type/placeholder/required changes
+        function buildDynamicFieldInputs(config) {
+            const { fieldId, fieldType, placeholder, isRequired, displayName, existingInput } = config;
+            const inputs = [];
+            const nameAttr = existingInput ? existingInput.getAttribute('name') : '';
+            const inputId = existingInput ? existingInput.id : `field_${String(fieldId || '').replace(/-/g, '_')}`;
+            const existingOptions = existingInput && existingInput.tagName === 'SELECT'
+                ? Array.from(existingInput.options).map(o => ({ value: o.value, text: o.textContent }))
+                : null;
+
+            const applyCommonAttrs = (el, cls = 'form-control') => {
+                if (nameAttr) el.setAttribute('name', nameAttr);
+                if (inputId) el.id = inputId;
+                if (cls) el.classList.add(cls);
+                if (isRequired) el.setAttribute('required', 'required');
+                return el;
+            };
+
+            switch ((fieldType || '').toLowerCase()) {
+                case 'textarea': {
+                    const ta = applyCommonAttrs(document.createElement('textarea'));
+                    ta.rows = 3;
+                    ta.placeholder = placeholder || '';
+                    inputs.push(ta);
+                    break;
+                }
+                case 'select': {
+                    const sel = applyCommonAttrs(document.createElement('select'));
+                    sel.appendChild(new Option('Select an option...', ''));
+                    const options = existingOptions && existingOptions.length
+                        ? existingOptions
+                        : [{ value: 'option1', text: 'Option 1' }, { value: 'option2', text: 'Option 2' }, { value: 'option3', text: 'Option 3' }];
+                    options.forEach(opt => sel.appendChild(new Option(opt.text, opt.value)));
+                    inputs.push(sel);
+                    break;
+                }
+                case 'checkbox': {
+                    const wrapper = document.createElement('div');
+                    wrapper.classList.add('form-check');
+                    const cb = applyCommonAttrs(document.createElement('input'), 'form-check-input');
+                    cb.type = 'checkbox';
+                    cb.value = 'true';
+                    const cbLabel = document.createElement('label');
+                    cbLabel.classList.add('form-check-label');
+                    cbLabel.setAttribute('for', inputId);
+                    cbLabel.textContent = displayName || '';
+                    wrapper.appendChild(cb);
+                    wrapper.appendChild(cbLabel);
+                    inputs.push(wrapper);
+                    // Hidden input for false value
+                    const hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    if (nameAttr) hidden.setAttribute('name', nameAttr);
+                    hidden.value = 'false';
+                    inputs.push(hidden);
+                    break;
+                }
+                case 'date': {
+                    const inp = applyCommonAttrs(document.createElement('input'));
+                    inp.type = 'date';
+                    inputs.push(inp);
+                    break;
+                }
+                case 'number':
+                case 'email':
+                case 'tel':
+                default: {
+                    const inp = applyCommonAttrs(document.createElement('input'));
+                    inp.type = (fieldType || 'text').toLowerCase() === 'text' ? 'text' : fieldType;
+                    inp.placeholder = placeholder || '';
+                    inputs.push(inp);
+                    break;
+                }
+            }
+
+            return inputs;
+        }
+
+        // Replace field inputs in preview with freshly built elements
+        function refreshDynamicFieldPreview(fieldId, updatedData) {
+            const container = document.querySelector(`.additional-field-container[data-field-id="${fieldId}"]`);
+            if (!container) return;
+
+            // Update label text, required star, and type badge
+            const labelEl = container.querySelector('label.form-label');
+            if (labelEl) {
+                const baseText = `${updatedData.DisplayName} `;
+                if (labelEl.childNodes.length) {
+                    labelEl.childNodes[0].textContent = baseText;
+                } else {
+                    labelEl.textContent = baseText;
+                }
+
+                let requiredStar = labelEl.querySelector('.text-danger');
+                if (updatedData.IsRequired) {
+                    if (!requiredStar) {
+                        requiredStar = document.createElement('span');
+                        requiredStar.classList.add('text-danger');
+                        requiredStar.textContent = '*';
+                        labelEl.insertBefore(requiredStar, labelEl.firstChild ? labelEl.firstChild.nextSibling : null);
+                    }
+                } else if (requiredStar) {
+                    requiredStar.remove();
+                }
+
+                const typeBadge = labelEl.querySelector('.field-type-badge');
+                if (typeBadge) {
+                    typeBadge.textContent = updatedData.FieldType;
+                }
+            }
+
+            const existingInput = container.querySelector('input, select, textarea');
+            const validationSpan = container.querySelector('span[data-valmsg-for]');
+            // Remove existing inputs (including any hidden checkbox helper)
+            container.querySelectorAll('input, select, textarea').forEach(el => el.remove());
+
+            const newInputs = buildDynamicFieldInputs({
+                fieldId,
+                fieldType: updatedData.FieldType,
+                placeholder: updatedData.Placeholder,
+                isRequired: updatedData.IsRequired,
+                displayName: updatedData.DisplayName,
+                existingInput
+            });
+
+            newInputs.forEach(el => {
+                if (validationSpan && validationSpan.parentNode) {
+                    validationSpan.parentNode.insertBefore(el, validationSpan);
+                } else {
+                    container.appendChild(el);
+                }
+            });
+        }
+
         // Update field via API
         async function updateSelectedField() {
             if (!selectedFieldData) {
@@ -1552,6 +1719,23 @@
                 IsRequired: document.getElementById('fpRequired').checked,
                 IsConditional: document.getElementById('fpConditional').checked
             };
+            
+            // Add conditional logic if conditional is checked
+            if (updatedData.IsConditional) {
+                const dependsOn = document.getElementById('fpDependsOnField').value;
+                const showWhen = document.getElementById('fpShowWhenValue').value.trim();
+                
+                if (dependsOn && showWhen) {
+                    updatedData.ConditionalLogicJson = JSON.stringify({
+                        DependsOnFieldKey: dependsOn,
+                        ShowWhenValue: showWhen
+                    });
+                } else {
+                    updatedData.ConditionalLogicJson = null;
+                }
+            } else {
+                updatedData.ConditionalLogicJson = null;
+            }
 
             if (!updatedData.DisplayName) {
                 showToast('Field label is required', 'error');
@@ -1590,12 +1774,28 @@
                             if (previewField) {
                                 previewField.childNodes[0].textContent = updatedData.DisplayName + ' ';
                             }
-                            // Update selected field data
+                            // Update preview input, required star, and type badge
+                            refreshDynamicFieldPreview(selectedFieldData.fieldId, updatedData);
+
+                            // Keep client-side state in sync
+                            const localField = additionalFieldsData.find(f => f.FieldId === selectedFieldData.fieldId);
+                            if (localField) {
+                                localField.DisplayName = updatedData.DisplayName;
+                                localField.FieldType = updatedData.FieldType;
+                                localField.Placeholder = updatedData.Placeholder;
+                                localField.IsRequired = updatedData.IsRequired;
+                                localField.IsConditional = updatedData.IsConditional;
+                                localField.ConditionalLogicJson = updatedData.ConditionalLogicJson;
+                                localField.Step = updatedData.Step;
+                            }
                             selectedFieldData.displayName = updatedData.DisplayName;
                             selectedFieldData.type = updatedData.FieldType;
                             selectedFieldData.placeholder = updatedData.Placeholder;
                             selectedFieldData.isRequired = updatedData.IsRequired;
                             selectedFieldData.isConditional = updatedData.IsConditional;
+
+                            // Re-apply conditional logic so new inputs have listeners
+                            try { applyConditionalLogic(); } catch (e) { console.error('Error reapplying conditional logic', e); }
                         }
                     } else {
                         showToast(result.message, 'error');
@@ -1691,6 +1891,118 @@
             }
         }
 
+        // =================================
+        // CONDITIONAL FIELDS LOGIC
+        // =================================
+        
+        // Populate the "Depends On" dropdown with available fields
+        function populateDependsOnFields(currentStep, excludeFieldId) {
+            const dropdown = document.getElementById('fpDependsOnField');
+            dropdown.innerHTML = '<option value="">Select field...</option>';
+            
+            // Static fields map
+            const staticFieldsMap = {
+                1: [{key: 'FullName', label: 'Full Name'}, {key: 'Age', label: 'Age'}, {key: 'Gender', label: 'Gender'}, {key: 'DateOfBirth', label: 'Date of Birth'}],
+                2: [{key: 'HasAllergies', label: 'Has Allergies'}, {key: 'AllergyDescription', label: 'Allergy Description'}, {key: 'CurrentMedication', label: 'Current Medication'}, {key: 'HeightCm', label: 'Height (cm)'}, {key: 'WeightKg', label: 'Weight (kg)'}],
+                3: [{key: 'ContactName', label: 'Contact Name'}, {key: 'Relationship', label: 'Relationship'}, {key: 'PhoneNumber', label: 'Phone Number'}, {key: 'HasAlternativeContact', label: 'Has Alternative Contact'}, {key: 'AltContactName', label: 'Alt Contact Name'}, {key: 'AltPhoneNumber', label: 'Alt Phone Number'}]
+            };
+            
+            // Add fields from current step and earlier
+            for (let step = 1; step <= currentStep; step++) {
+                // Add static fields
+                if (staticFieldsMap[step]) {
+                    staticFieldsMap[step].forEach(field => {
+                        const option = document.createElement('option');
+                        option.value = field.key;
+                        option.textContent = `${field.label} (Step ${step})`;
+                        dropdown.appendChild(option);
+                    });
+                }
+                
+                // Add dynamic fields
+    additionalFieldsData.filter(f => f.Step === step && f.FieldId !== excludeFieldId).forEach(f => {
+                    const option = document.createElement('option');
+                    option.value = f.FieldId;
+                    option.textContent = `${f.DisplayName} (Step ${step})`;
+                    dropdown.appendChild(option);
+                });
+            }
+        }
+        
+        // Apply conditional logic to show/hide fields at runtime
+        function applyConditionalLogic() {
+            // For each additional field
+            additionalFieldsData.forEach(field => {
+                if (!field.IsConditional || !field.ConditionalLogicJson) return;
+                
+                try {
+                    const condition = JSON.parse(field.ConditionalLogicJson);
+                    const fieldContainer = document.querySelector(`.additional-field-container[data-field-id="${field.FieldId}"]`);
+                    if (!fieldContainer) return;
+                    
+                    const dependsOnFieldKey = condition.DependsOnFieldKey || condition.dependsOnFieldKey;
+                    const showWhenValue = condition.ShowWhenValue || condition.showWhenValue;
+                    
+                    if (!dependsOnFieldKey || !showWhenValue) return;
+                    
+                    // Find dependent field element
+                    let dependentField = null;
+                    
+                    // Try static field first
+                    dependentField = document.querySelector(`[data-field-key="${dependsOnFieldKey}"] select, [data-field-key="${dependsOnFieldKey}"] input`);
+                    
+                    // Try dynamic field
+                    if (!dependentField) {
+                        const depContainer = document.querySelector(`.additional-field-container[data-field-id="${dependsOnFieldKey}"]`);
+                        if (depContainer) {
+                            dependentField = depContainer.querySelector('input, select, textarea');
+                        }
+                    }
+                    
+                    if (!dependentField) return;
+                    
+                    // Function to check and apply visibility
+                    const checkVisibility = () => {
+                        let fieldValue = dependentField.value;
+                        let shouldShow = false;
+                        
+                        // Normalize values for comparison
+                        const normalizedFieldValue = String(fieldValue).toLowerCase().trim();
+                        const normalizedShowWhen = String(showWhenValue).toLowerCase().trim();
+                        
+                        shouldShow = normalizedFieldValue === normalizedShowWhen;
+                        
+                        // Apply visibility with animation
+                        if (shouldShow) {
+                            fieldContainer.style.display = 'block';
+						    fieldContainer.style.opacity = '0';
+                            setTimeout(() => {
+                                fieldContainer.style.transition = 'opacity 0.3s';
+                                fieldContainer.style.opacity = '1';
+                            }, 10);
+                        } else {
+                            fieldContainer.style.transition = 'opacity 0.3s';
+                            fieldContainer.style.opacity = '0';
+                            setTimeout(() => {
+                                if (fieldContainer.style.opacity === '0') {
+                                    fieldContainer.style.display = 'none';
+                                }
+                            }, 300);
+                        }
+                    };
+                    
+                    // Apply initially
+                    checkVisibility();
+                    
+                    // Watch for changes
+                    dependentField.addEventListener('change', checkVisibility);
+                    dependentField.addEventListener('input', checkVisibility);
+                } catch (e) {
+                    console.error('Error applying conditional logic:', e);
+                }
+            });
+        }
+
         // Initialize field selection system
         document.addEventListener('DOMContentLoaded', () => {
             // Update button click
@@ -1698,6 +2010,14 @@
             
             // Delete button click
             document.getElementById('fpDeleteBtn').addEventListener('click', deleteSelectedField);
+            
+            // Conditional checkbox toggle
+            document.getElementById('fpConditional').addEventListener('change', function() {
+                document.getElementById('conditionalConfig').style.display = this.checked ? 'block' : 'none';
+            });
+            
+            // Apply conditional logic on page load
+            try { applyConditionalLogic(); } catch (e) { console.error('Error applying conditional logic:', e); }
             
             // Click handlers will be added dynamically in updateFieldsList
             setupFieldClickHandlers();
@@ -1739,6 +2059,16 @@
                         // Find in additionalFieldsData
                         const fieldData = additionalFieldsData.find(f => f.FieldId === fieldId);
                         if (fieldData) {
+                            // Parse conditional logic if present
+                            let conditionalLogic = null;
+                            if (fieldData.ConditionalLogicJson) {
+                                try {
+                                    conditionalLogic = JSON.parse(fieldData.ConditionalLogicJson);
+                                } catch (e) {
+                                    console.error('Error parsing conditional logic:', e);
+                                }
+                            }
+                            
                             selectField({
                                 fieldType: 'dynamic',
                                 fieldId: fieldId,
@@ -1747,7 +2077,8 @@
                                 step: fieldData.Step,
                                 placeholder: fieldData.Placeholder || '',
                                 isRequired: fieldData.IsRequired || false,
-                                isConditional: fieldData.IsConditional || false
+                                isConditional: fieldData.IsConditional || false,
+                                conditionalLogic: conditionalLogic
                             });
                         }
                     }
