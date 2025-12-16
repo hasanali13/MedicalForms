@@ -27,16 +27,23 @@ namespace Medical.Controllers
 
             // Get additional fields from configuration (hide soft-deleted)
             var configForm = GetOrCreateConfigForm();
-            ViewBag.AdditionalFields = configForm.AdditionalFields
+            var allFields = configForm.AdditionalFields
                 .Where(f => f.IsActive && !f.IsDeleted)
                 .OrderBy(f => f.Step)
                 .ThenBy(f => f.DisplayOrder)
                 .ToList();
 
+            // Separate steps from regular fields
+            var steps = allFields.Where(f => f.FieldType == "step").ToList();
+            var regularFields = allFields.Where(f => f.FieldType != "step").ToList();
+
+            ViewBag.AdditionalFields = regularFields;
+            ViewBag.CustomSteps = steps; // Pass steps to view
+
             var model = new ViewPublicForm();
             // Load labels from config
             model.FieldLabels = configForm.FieldLabels;
-            
+
             return View(model);
         }
 
@@ -329,24 +336,141 @@ namespace Medical.Controllers
             {
                 var configForm = GetOrCreateConfigForm();
                 var labels = configForm.FieldLabels;
-                
+
                 if (labels.ContainsKey(request.FieldKey))
                 {
                     labels[request.FieldKey] = request.Label;
                     configForm.FieldLabels = labels; // Triggers JSON serialization
                     configForm.FormVersion++;
-                    
+
                     _context.ViewPublicForm.Update(configForm);
                     await _context.SaveChangesAsync();
-                    
+
                     return Json(new { success = true, message = "Label updated" });
                 }
-                
+
                 return Json(new { success = false, message = "Field key not found" });
             }
             catch (Exception ex)
             {
                 return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        // AJAX: Add custom step
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddCustomStep([FromBody] AddStepRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.StepName))
+                {
+                    return Json(new { success = false, message = "Step name is required" });
+                }
+
+                var configForm = GetOrCreateConfigForm();
+                var existingFields = configForm.AdditionalFields ?? new List<AdditionalField>();
+
+                // Generate a unique field name for the step
+                var stepFieldName = $"step_{request.StepName.ToLower().Replace(" ", "_")}_{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+
+                // Create a special additional field to represent the step
+                var stepField = new AdditionalField
+                {
+                    FieldId = Guid.NewGuid(),
+                    DisplayName = request.StepName.Trim(),
+                    FieldName = stepFieldName,
+                    FieldType = "step", // Special type for steps
+                    Step = request.StepOrder,
+                    Placeholder = request.StepDescription,
+                    IsRequired = false,
+                    IsConditional = false,
+                    CreatedAt = DateTime.UtcNow,
+                    CreatedBy = User.Identity?.Name ?? "System",
+                    IsActive = true,
+                    IsDeleted = false,
+                    DisplayOrder = existingFields.Count + 1,
+                    OptionsJson = request.StepIcon // Store icon in OptionsJson
+                };
+
+                existingFields.Add(stepField);
+
+                // Reorder steps to maintain sequence
+                var steps = existingFields.Where(f => f.FieldType == "step").OrderBy(f => f.Step).ToList();
+                for (int i = 0; i < steps.Count; i++)
+                {
+                    steps[i].Step = i + 4; // Steps start from 4 (after static steps)
+                }
+
+                configForm.AdditionalFields = existingFields;
+                configForm.FormVersion++;
+                configForm.CreatedAt = DateTime.UtcNow;
+
+                _context.ViewPublicForm.Update(configForm);
+                await _context.SaveChangesAsync();
+
+                return Json(new
+                {
+                    success = true,
+                    message = $"Step '{stepField.DisplayName}' added successfully!",
+                    step = new
+                    {
+                        stepId = stepField.FieldId,
+                        stepName = stepField.DisplayName,
+                        stepDescription = stepField.Placeholder,
+                        stepIcon = stepField.OptionsJson,
+                        stepOrder = stepField.Step
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error: {ex.Message}" });
+            }
+        }
+
+        // AJAX: Delete custom step
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteCustomStep([FromBody] DeleteStepRequest request)
+        {
+            try
+            {
+                var configForm = GetOrCreateConfigForm();
+                var existingFields = configForm.AdditionalFields ?? new List<AdditionalField>();
+
+                // Find the step field
+                var stepField = existingFields.FirstOrDefault(f => f.FieldId == request.StepId && f.FieldType == "step");
+                if (stepField == null)
+                {
+                    return Json(new { success = false, message = "Step not found" });
+                }
+
+                // Mark step field as deleted
+                stepField.IsDeleted = true;
+
+                // Also mark all fields in this step as deleted
+                var stepNumber = stepField.Step;
+                var stepFields = existingFields.Where(f => f.Step == stepNumber).ToList();
+                foreach (var field in stepFields)
+                {
+                    field.IsDeleted = true;
+                    field.UpdatedAt = DateTime.UtcNow;
+                }
+
+                configForm.AdditionalFields = existingFields;
+                configForm.FormVersion++;
+                configForm.CreatedAt = DateTime.UtcNow;
+
+                _context.ViewPublicForm.Update(configForm);
+                await _context.SaveChangesAsync();
+
+                return Json(new { success = true, message = "Step deleted successfully!" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error: {ex.Message}" });
             }
         }
 
@@ -369,10 +493,10 @@ namespace Medical.Controllers
                 Last7DaysStats = allForms
                     .Where(f => f.CreatedAt >= DateTime.UtcNow.AddDays(-7))
                     .GroupBy(f => f.CreatedAt.Date)
-                    .Select(g => new Medical.Models.ViewModels.DailySubmissionStat 
-                    { 
-                        Date = g.Key, 
-                        Count = g.Count() 
+                    .Select(g => new Medical.Models.ViewModels.DailySubmissionStat
+                    {
+                        Date = g.Key,
+                        Count = g.Count()
                     })
                     .OrderBy(s => s.Date)
                     .ToList()
@@ -441,8 +565,6 @@ namespace Medical.Controllers
 
             var form = await _context.ViewPublicForm
                 .FirstOrDefaultAsync(x => x.ViewPublicFormId == id);
-
-
 
             if (form == null || form.IsDeleted == true) return NotFound();
 
@@ -595,6 +717,19 @@ namespace Medical.Controllers
     {
         public string FieldKey { get; set; } = string.Empty;
         public string Label { get; set; } = string.Empty;
+    }
+
+    public class AddStepRequest
+    {
+        public string StepName { get; set; } = string.Empty;
+        public string? StepDescription { get; set; }
+        public int StepOrder { get; set; } = 4; // Default after step 3
+        public string? StepIcon { get; set; } = "📋";
+    }
+
+    public class DeleteStepRequest
+    {
+        public Guid StepId { get; set; }
     }
 
     // Model for storing additional field values

@@ -41,6 +41,16 @@ namespace Medical.Models
 
         public string? ConditionalLogicJson { get; set; }
 
+        // Step-related properties
+        [NotMapped]
+        public bool IsStep { get; set; } = false;
+
+        [NotMapped]
+        public string? StepDescription { get; set; }
+
+        [NotMapped]
+        public string? StepIcon { get; set; }
+
         [NotMapped]
         public List<string> Options
         {
@@ -74,6 +84,7 @@ namespace Medical.Models
             "checkbox" => "checkbox",
             "radio" => "radio",
             "file" => "file",
+            "step" => "step",
             _ => "text"
         };
 
