@@ -5,6 +5,33 @@
     var requiredAttr = Model.IsRequired ? "required" : "";
     var placeholder = !string.IsNullOrEmpty(Model.Placeholder) ? Model.Placeholder : "";
     var fieldId = $"field_{Model.FieldId.ToString().Replace("-", "_")}";
+
+    // Parse options into a unified list of DropdownOption (done here so markup stays clean)
+    List<Medical.Models.DropdownOption> parsedOptions = null;
+    if (!string.IsNullOrEmpty(Model.OptionsJson))
+    {
+        try
+        {
+            parsedOptions = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Medical.Models.DropdownOption>>(Model.OptionsJson);
+        }
+        catch
+        {
+            try
+            {
+                var simple = Newtonsoft.Json.JsonConvert.DeserializeObject<List<string>>(Model.OptionsJson);
+                if (simple != null)
+                {
+                    parsedOptions = simple.Select(s => new Medical.Models.DropdownOption { Label = s, Value = s, IsDefault = false }).ToList();
+                }
+            }
+            catch
+            {
+                parsedOptions = null;
+            }
+        }
+    }
+
+    var hasDefault = parsedOptions != null && parsedOptions.Any(o => o.IsDefault);
 }
 
 @if (!string.IsNullOrEmpty(Model.FieldType))
@@ -23,59 +50,28 @@
         case "select":
             <select id="@fieldId"
                     name="AdditionalFields[@fieldName]"
-                    class="form-control"
+                    class="form-select"
                     @requiredAttr>
-                <option value="">Select an option...</option>
-                @if (!string.IsNullOrEmpty(Model.OptionsJson))
+                @if (!hasDefault)
                 {
-                    try
+                    <option value="" disabled selected>Select an option...</option>
+                }
+                else
+                {
+                    <option value="" disabled>Select an option...</option>
+                }
+
+                @if (parsedOptions != null && parsedOptions.Count > 0)
+                {
+                    foreach (var option in parsedOptions)
                     {
-                        var options = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Medical.Models.DropdownOption>>(Model.OptionsJson);
-                        if (options != null && options.Count > 0)
+                        if (option.IsDefault)
                         {
-                            foreach (var option in options)
-                            {
-                                if (option.IsDefault)
-                                {
-                                    <option value="@option.Value" selected="selected">@option.Label</option>
-                                }
-                                else
-                                {
-                                    <option value="@option.Value">@option.Label</option>
-                                }
-                            }
+                            <option value="@option.Value" selected>@option.Label</option>
                         }
                         else
                         {
-                            <option value="option1">Option 1</option>
-                            <option value="option2">Option 2</option>
-                            <option value="option3">Option 3</option>
-                        }
-                    }
-                    catch
-                    {
-                        try
-                        {
-                            var simple = Newtonsoft.Json.JsonConvert.DeserializeObject<List<string>>(Model.OptionsJson);
-                            if (simple != null)
-                            {
-                                foreach (var s in simple)
-                                {
-                                    <option value="@s">@s</option>
-                                }
-                            }
-                            else
-                            {
-                                <option value="option1">Option 1</option>
-                                <option value="option2">Option 2</option>
-                                <option value="option3">Option 3</option>
-                            }
-                        }
-                        catch
-                        {
-                            <option value="option1">Option 1</option>
-                            <option value="option2">Option 2</option>
-                            <option value="option3">Option 3</option>
+                            <option value="@option.Value">@option.Label</option>
                         }
                     }
                 }
