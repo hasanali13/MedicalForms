@@ -144,6 +144,7 @@ namespace Medical.Controllers
                         existingField.IsDeleted = false;
                         existingField.IsActive = true;
                         existingField.UpdatedAt = DateTime.UtcNow;
+                        existingField.OptionsJson = request.OptionsJson; // persist options if provided
 
                         configForm.AdditionalFields = existingFields;
                         configForm.FormVersion++;
@@ -186,6 +187,7 @@ namespace Medical.Controllers
                     IsRequired = request.IsRequired,
                     IsConditional = request.IsConditional,
                     ConditionalLogicJson = request.ConditionalLogicJson,
+                    OptionsJson = request.OptionsJson,
                     CreatedAt = DateTime.UtcNow,
                     CreatedBy = User.Identity?.Name ?? "System",
                     IsActive = true,
@@ -249,6 +251,7 @@ namespace Medical.Controllers
                 fieldToUpdate.IsRequired = request.IsRequired;
                 fieldToUpdate.IsConditional = request.IsConditional;
                 fieldToUpdate.ConditionalLogicJson = request.ConditionalLogicJson;
+                fieldToUpdate.OptionsJson = request.OptionsJson; // persist options
                 fieldToUpdate.UpdatedAt = DateTime.UtcNow;
 
                 configForm.AdditionalFields = existingFields;
@@ -567,6 +570,7 @@ namespace Medical.Controllers
         public bool IsRequired { get; set; }
         public bool IsConditional { get; set; }
         public string? ConditionalLogicJson { get; set; }
+        public string? OptionsJson { get; set; }
     }
 
     public class DeleteFieldRequest
@@ -584,6 +588,7 @@ namespace Medical.Controllers
         public bool IsRequired { get; set; }
         public bool IsConditional { get; set; }
         public string? ConditionalLogicJson { get; set; }
+        public string? OptionsJson { get; set; }
     }
 
     public class UpdateLabelRequest

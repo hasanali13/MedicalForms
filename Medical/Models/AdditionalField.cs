@@ -96,11 +96,57 @@ namespace Medical.Models
             }
             set => ConditionalLogicJson = value == null ? null : System.Text.Json.JsonSerializer.Serialize(value);
         }
+
+        // New structured options support
+        [NotMapped]
+        public List<DropdownOption> OptionsDetailed
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(OptionsJson))
+                    return new List<DropdownOption>();
+
+                try
+                {
+                    return System.Text.Json.JsonSerializer.Deserialize<List<DropdownOption>>(OptionsJson)
+                        ?? new List<DropdownOption>();
+                }
+                catch
+                {
+                    // Try deserializing as list of strings for backward compatibility
+                    try
+                    {
+                        var simple = System.Text.Json.JsonSerializer.Deserialize<List<string>>(OptionsJson);
+                        var list = new List<DropdownOption>();
+                        if (simple != null)
+                        {
+                            foreach (var s in simple)
+                            {
+                                list.Add(new DropdownOption { Label = s, Value = s, IsDefault = false });
+                            }
+                        }
+                        return list;
+                    }
+                    catch
+                    {
+                        return new List<DropdownOption>();
+                    }
+                }
+            }
+            set => OptionsJson = System.Text.Json.JsonSerializer.Serialize(value ?? new List<DropdownOption>());
+        }
     }
 
     public class ConditionalLogic
     {
         public string DependsOnFieldKey { get; set; } = string.Empty;
         public string ShowWhenValue { get; set; } = string.Empty;
+    }
+
+    public class DropdownOption
+    {
+        public string Label { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+        public bool IsDefault { get; set; } = false;
     }
 }

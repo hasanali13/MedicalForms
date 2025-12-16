@@ -1,7 +1,6 @@
 ﻿@model Medical.Models.AdditionalField
 
 @{
-    // Use the actual FieldName from the model
     var fieldName = Model.FieldName;
     var requiredAttr = Model.IsRequired ? "required" : "";
     var placeholder = !string.IsNullOrEmpty(Model.Placeholder) ? Model.Placeholder : "";
@@ -14,11 +13,11 @@
     {
         case "textarea":
             <textarea id="@fieldId"
-          name="AdditionalFields[@fieldName]"
-          class="form-control"
-          placeholder="@placeholder"
-          @requiredAttr
-          rows="3"></textarea>
+                      name="AdditionalFields[@fieldName]"
+                      class="form-control"
+                      placeholder="@placeholder"
+                      @requiredAttr
+                      rows="3"></textarea>
             break;
 
         case "select":
@@ -31,20 +30,53 @@
                 {
                     try
                     {
-                        var options = Newtonsoft.Json.JsonConvert.DeserializeObject<List<string>>(Model.OptionsJson);
-                        if (options != null)
+                        var options = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Medical.Models.DropdownOption>>(Model.OptionsJson);
+                        if (options != null && options.Count > 0)
                         {
                             foreach (var option in options)
                             {
-                                <option value="@option">@option</option>
+                                if (option.IsDefault)
+                                {
+                                    <option value="@option.Value" selected="selected">@option.Label</option>
+                                }
+                                else
+                                {
+                                    <option value="@option.Value">@option.Label</option>
+                                }
                             }
+                        }
+                        else
+                        {
+                            <option value="option1">Option 1</option>
+                            <option value="option2">Option 2</option>
+                            <option value="option3">Option 3</option>
                         }
                     }
                     catch
                     {
-                        <option value="option1">Option 1</option>
-                        <option value="option2">Option 2</option>
-                        <option value="option3">Option 3</option>
+                        try
+                        {
+                            var simple = Newtonsoft.Json.JsonConvert.DeserializeObject<List<string>>(Model.OptionsJson);
+                            if (simple != null)
+                            {
+                                foreach (var s in simple)
+                                {
+                                    <option value="@s">@s</option>
+                                }
+                            }
+                            else
+                            {
+                                <option value="option1">Option 1</option>
+                                <option value="option2">Option 2</option>
+                                <option value="option3">Option 3</option>
+                            }
+                        }
+                        catch
+                        {
+                            <option value="option1">Option 1</option>
+                            <option value="option2">Option 2</option>
+                            <option value="option3">Option 3</option>
+                        }
                     }
                 }
                 else
@@ -66,7 +98,6 @@
                        @requiredAttr />
                 <label class="form-check-label" for="@fieldId">@Model.DisplayName</label>
             </div>
-            <!-- Hidden input for false value when checkbox is unchecked -->
             <input type="hidden" name="AdditionalFields[@fieldName]" value="false" />
             break;
 
@@ -76,21 +107,39 @@
                 {
                     try
                     {
-                        var options = Newtonsoft.Json.JsonConvert.DeserializeObject<List<string>>(Model.OptionsJson);
-                        if (options != null)
+                        var options = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Medical.Models.DropdownOption>>(Model.OptionsJson);
+                        if (options != null && options.Count > 0)
                         {
                             foreach (var option in options)
                             {
+                                var optionId = $"{fieldId}_{option.Value.Replace(" ", "_")}";
                                 <div class="form-check">
-                                    <input type="radio"
-                                           id="@(fieldId)_@option.Replace(" ", "_")"
-                                           name="AdditionalFields[@fieldName]"
-                                           value="@option"
-                                           class="form-check-input"
-                                           @requiredAttr />
-                                    <label class="form-check-label" for="@(fieldId)_@option.Replace(" ", "_")">@option</label>
+                                    @if (option.IsDefault)
+                                    {
+                                        <input type="radio"
+                                               id="@optionId"
+                                               name="AdditionalFields[@fieldName]"
+                                               value="@option.Value"
+                                               class="form-check-input"
+                                               checked
+                                               @requiredAttr />
+                                    }
+                                    else
+                                    {
+                                        <input type="radio"
+                                               id="@optionId"
+                                               name="AdditionalFields[@fieldName]"
+                                               value="@option.Value"
+                                               class="form-check-input"
+                                               @requiredAttr />
+                                    }
+                                    <label class="form-check-label" for="@optionId">@option.Label</label>
                                 </div>
                             }
+                        }
+                        else
+                        {
+                            <div class="text-muted">No options configured</div>
                         }
                     }
                     catch
@@ -140,13 +189,13 @@
                    @requiredAttr />
             break;
 
-        default: // text (default)
-                 <input type="text"
-                        id="@fieldId"
-                        name="AdditionalFields[@fieldName]"
-                        class="form-control"
-                        placeholder="@placeholder"
-                        @requiredAttr />
+        default:
+            <input type="text"
+                   id="@fieldId"
+                   name="AdditionalFields[@fieldName]"
+                   class="form-control"
+                   placeholder="@placeholder"
+                   @requiredAttr />
             break;
     }
 }
@@ -160,7 +209,6 @@ else
            @requiredAttr />
 }
 
-<!-- Validation message span -->
 <span class="text-danger field-validation-valid"
       data-valmsg-for="AdditionalFields[@fieldName]"
       data-valmsg-replace="true"></span>

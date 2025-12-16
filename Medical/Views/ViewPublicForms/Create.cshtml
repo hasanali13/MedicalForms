@@ -997,6 +997,18 @@
                     </small>
                 </div>
             </div>
+
+            <!-- Dropdown options editor (shown when Field Type = select) -->
+            <div id="fpOptionsEditor" style="display:none; margin-top:10px;">
+                <div class="fp-group">
+                    <label>Options</label>
+                    <div id="fpOptionsList" style="display:flex;flex-direction:column;gap:8px;"></div>
+                    <div style="display:flex;gap:8px;margin-top:8px;">
+                        <button type="button" id="fpAddOptionBtn" class="btn btn-primary" style="padding:6px 10px;font-size:13px;">Add Option</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="fp-actions">
                 <button type="button" id="fpUpdateBtn" class="fp-btn-update" disabled>
                     <i class="fas fa-save"></i> Update
@@ -1223,7 +1235,7 @@
         // =================================
         // Prepare client-side data for fields
         const additionalFieldsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-            additionalFields.Select(f => new { f.FieldId, f.DisplayName, f.FieldType, f.Step, f.IsRequired, f.IsConditional, f.Placeholder, f.ConditionalLogicJson })
+            additionalFields.Select(f => new { f.FieldId, f.DisplayName, f.FieldType, f.Step, f.IsRequired, f.IsConditional, f.Placeholder, f.ConditionalLogicJson, f.OptionsJson })
         ));
 
         const originalFields = {
@@ -1544,7 +1556,10 @@
                 document.getElementById('fpUpdateBtn').disabled = false;
                 document.getElementById('fpDeleteBtn').disabled = false;
             }
-            
+
+            // Show options editor if type is select
+            toggleOptionsEditor(fieldData.type === 'select', fieldData);
+
             // Highlight in left list
             if (fieldData.fieldType === 'static') {
                 const leftItem = document.querySelector(`.field-item[data-field-key="${fieldData.fieldKey}"]`);
@@ -1558,153 +1573,91 @@
             highlightPreviewField(fieldData);
         }
 
-        function highlightPreviewField(fieldData) {
-            // For static fields, find by data-field-key in preview
-            if (fieldData.fieldType === 'static') {
-                const previewField = document.querySelector(`.form-step .mb-3[data-field-key="${fieldData.fieldKey}"]`);
-                if (previewField) previewField.classList.add('field-preview-selected');
-            } else {
-                // For dynamic fields, find by data-field-id
-                const previewField = document.querySelector(`.additional-field-container[data-field-id="${fieldData.fieldId}"]`);
-                if (previewField) previewField.classList.add('field-preview-selected');
-            }
-        }
+        // Toggle options editor visibility and populate when needed
+        function toggleOptionsEditor(show, fieldData) {
+            const editor = document.getElementById('fpOptionsEditor');
+            if (!editor) return;
+            editor.style.display = show ? 'block' : 'none';
 
-        // Build new input elements for dynamic fields when type/placeholder/required changes
-        function buildDynamicFieldInputs(config) {
-            const { fieldId, fieldType, placeholder, isRequired, displayName, existingInput } = config;
-            const inputs = [];
-            const nameAttr = existingInput ? existingInput.getAttribute('name') : '';
-            const inputId = existingInput ? existingInput.id : `field_${String(fieldId || '').replace(/-/g, '_')}`;
-            const existingOptions = existingInput && existingInput.tagName === 'SELECT'
-                ? Array.from(existingInput.options).map(o => ({ value: o.value, text: o.textContent }))
-                : null;
+            if (show && fieldData) {
+                // Populate options list
+                const list = document.getElementById('fpOptionsList');
+                list.innerHTML = '';
 
-            const applyCommonAttrs = (el, cls = 'form-control') => {
-                if (nameAttr) el.setAttribute('name', nameAttr);
-                if (inputId) el.id = inputId;
-                if (cls) el.classList.add(cls);
-                if (isRequired) el.setAttribute('required', 'required');
-                return el;
-            };
-
-            switch ((fieldType || '').toLowerCase()) {
-                case 'textarea': {
-                    const ta = applyCommonAttrs(document.createElement('textarea'));
-                    ta.rows = 3;
-                    ta.placeholder = placeholder || '';
-                    inputs.push(ta);
-                    break;
-                }
-                case 'select': {
-                    const sel = applyCommonAttrs(document.createElement('select'));
-                    sel.appendChild(new Option('Select an option...', ''));
-                    const options = existingOptions && existingOptions.length
-                        ? existingOptions
-                        : [{ value: 'option1', text: 'Option 1' }, { value: 'option2', text: 'Option 2' }, { value: 'option3', text: 'Option 3' }];
-                    options.forEach(opt => sel.appendChild(new Option(opt.text, opt.value)));
-                    inputs.push(sel);
-                    break;
-                }
-                case 'checkbox': {
-                    const wrapper = document.createElement('div');
-                    wrapper.classList.add('form-check');
-                    const cb = applyCommonAttrs(document.createElement('input'), 'form-check-input');
-                    cb.type = 'checkbox';
-                    cb.value = 'true';
-                    const cbLabel = document.createElement('label');
-                    cbLabel.classList.add('form-check-label');
-                    cbLabel.setAttribute('for', inputId);
-                    cbLabel.textContent = displayName || '';
-                    wrapper.appendChild(cb);
-                    wrapper.appendChild(cbLabel);
-                    inputs.push(wrapper);
-                    // Hidden input for false value
-                    const hidden = document.createElement('input');
-                    hidden.type = 'hidden';
-                    if (nameAttr) hidden.setAttribute('name', nameAttr);
-                    hidden.value = 'false';
-                    inputs.push(hidden);
-                    break;
-                }
-                case 'date': {
-                    const inp = applyCommonAttrs(document.createElement('input'));
-                    inp.type = 'date';
-                    inputs.push(inp);
-                    break;
-                }
-                case 'number':
-                case 'email':
-                case 'tel':
-                default: {
-                    const inp = applyCommonAttrs(document.createElement('input'));
-                    inp.type = (fieldType || 'text').toLowerCase() === 'text' ? 'text' : fieldType;
-                    inp.placeholder = placeholder || '';
-                    inputs.push(inp);
-                    break;
-                }
-            }
-
-            return inputs;
-        }
-
-        // Replace field inputs in preview with freshly built elements
-        function refreshDynamicFieldPreview(fieldId, updatedData) {
-            const container = document.querySelector(`.additional-field-container[data-field-id="${fieldId}"]`);
-            if (!container) return;
-
-            // Update label text, required star, and type badge
-            const labelEl = container.querySelector('label.form-label');
-            if (labelEl) {
-                const baseText = `${updatedData.DisplayName} `;
-                if (labelEl.childNodes.length) {
-                    labelEl.childNodes[0].textContent = baseText;
-                } else {
-                    labelEl.textContent = baseText;
-                }
-
-                let requiredStar = labelEl.querySelector('.text-danger');
-                if (updatedData.IsRequired) {
-                    if (!requiredStar) {
-                        requiredStar = document.createElement('span');
-                        requiredStar.classList.add('text-danger');
-                        requiredStar.textContent = '*';
-                        labelEl.insertBefore(requiredStar, labelEl.firstChild ? labelEl.firstChild.nextSibling : null);
+                let options = [];
+                if (fieldData.optionsJson) {
+                    try {
+                        options = JSON.parse(fieldData.optionsJson);
+                        // If options are simple strings, convert
+                        if (options.length && typeof options[0] === 'string') {
+                            options = options.map(o => ({ label: o, value: o, isDefault: false }));
+                        }
+                    } catch (e) {
+                        options = [];
                     }
-                } else if (requiredStar) {
-                    requiredStar.remove();
                 }
 
-                const typeBadge = labelEl.querySelector('.field-type-badge');
-                if (typeBadge) {
-                    typeBadge.textContent = updatedData.FieldType;
+                // fallback if no options
+                if (!options || options.length === 0) {
+                    options = [ { label: 'Option 1', value: 'option1', isDefault: false }, { label: 'Option 2', value: 'option2', isDefault: false }, { label: 'Option 3', value: 'option3', isDefault: false } ];
                 }
+
+                options.forEach((opt, idx) => {
+                    const el = createOptionEditorRow(opt.label || opt.Label || '', opt.value || opt.Value || '', !!opt.isDefault || !!opt.IsDefault, idx === 0);
+                    list.appendChild(el);
+                });
+
+                // ensure add button handler
+                const addBtn = document.getElementById('fpAddOptionBtn');
+                addBtn.onclick = function() {
+                    const newEl = createOptionEditorRow('', '', false, false);
+                    list.appendChild(newEl);
+                };
             }
-
-            const existingInput = container.querySelector('input, select, textarea');
-            const validationSpan = container.querySelector('span[data-valmsg-for]');
-            // Remove existing inputs (including any hidden checkbox helper)
-            container.querySelectorAll('input, select, textarea').forEach(el => el.remove());
-
-            const newInputs = buildDynamicFieldInputs({
-                fieldId,
-                fieldType: updatedData.FieldType,
-                placeholder: updatedData.Placeholder,
-                isRequired: updatedData.IsRequired,
-                displayName: updatedData.DisplayName,
-                existingInput
-            });
-
-            newInputs.forEach(el => {
-                if (validationSpan && validationSpan.parentNode) {
-                    validationSpan.parentNode.insertBefore(el, validationSpan);
-                } else {
-                    container.appendChild(el);
-                }
-            });
         }
 
-        // Update field via API
+        function createOptionEditorRow(label, value, isDefault, canRemove) {
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.gap = '8px';
+
+            const lbl = document.createElement('input');
+            lbl.type = 'text';
+            lbl.className = 'fp-input';
+            lbl.placeholder = 'Label';
+            lbl.value = label || '';
+            lbl.style.flex = '1';
+
+            const val = document.createElement('input');
+            val.type = 'text';
+            val.className = 'fp-input';
+            val.placeholder = 'Value';
+            val.value = value || '';
+            val.style.width = '120px';
+
+            const def = document.createElement('input');
+            def.type = 'radio';
+            def.name = 'fpOptionDefault';
+            def.checked = !!isDefault;
+            def.title = 'Mark default option';
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn-secondary';
+            removeBtn.style.padding = '6px 10px';
+            removeBtn.style.fontSize = '13px';
+            removeBtn.textContent = 'Remove';
+            removeBtn.onclick = function() { row.remove(); };
+
+            row.appendChild(lbl);
+            row.appendChild(val);
+            row.appendChild(def);
+            row.appendChild(removeBtn);
+
+            return row;
+        }
+
+        // When update button is clicked and type is select, collect options from editor and include in payload
         async function updateSelectedField() {
             if (!selectedFieldData) {
                 showToast('No field selected', 'error');
@@ -1720,6 +1673,23 @@
                 IsConditional: document.getElementById('fpConditional').checked
             };
             
+            // Collect options if select
+            if (updatedData.FieldType === 'select') {
+                const list = document.getElementById('fpOptionsList');
+                const rows = list ? Array.from(list.children) : [];
+                const opts = [];
+                rows.forEach(r => {
+                    const inputs = r.querySelectorAll('input');
+                    if (inputs && inputs.length >= 3) {
+                        const l = inputs[0].value.trim();
+                        const v = inputs[1].value.trim();
+                        const isDef = inputs[2].checked;
+                        if (l && v) opts.push({ Label: l, Value: v, IsDefault: !!isDef });
+                    }
+                });
+                updatedData.OptionsJson = JSON.stringify(opts);
+            }
+
             // Add conditional logic if conditional is checked
             if (updatedData.IsConditional) {
                 const dependsOn = document.getElementById('fpDependsOnField').value;
@@ -1787,6 +1757,7 @@
                                 localField.IsConditional = updatedData.IsConditional;
                                 localField.ConditionalLogicJson = updatedData.ConditionalLogicJson;
                                 localField.Step = updatedData.Step;
+                                if (updatedData.OptionsJson) localField.OptionsJson = updatedData.OptionsJson;
                             }
                             selectedFieldData.displayName = updatedData.DisplayName;
                             selectedFieldData.type = updatedData.FieldType;
@@ -1796,6 +1767,35 @@
 
                             // Re-apply conditional logic so new inputs have listeners
                             try { applyConditionalLogic(); } catch (e) { console.error('Error reapplying conditional logic', e); }
+
+                            // If updated type is select, ensure options are applied to preview immediately
+                            try {
+                                if (updatedData.FieldType === 'select') {
+                                    // Build updated OptionsJson object for refresh
+                                    const parsedOpts = updatedData.OptionsJson ? JSON.parse(updatedData.OptionsJson) : [];
+                                    const optsList = parsedOpts.map(o => ({ Label: o.Label || o.label, Value: o.Value || o.value || o.value, IsDefault: o.IsDefault || o.isDefault || false }));
+                                    // Ensure preview select shows new options
+                                    const container = document.querySelector(`.additional-field-container[data-field-id="${selectedFieldData.fieldId}"]`);
+                                    if (container) {
+                                        const sel = container.querySelector('select');
+                                        if (sel) {
+                                            // Remove all child options
+                                            sel.innerHTML = '';
+                                            const placeholder = document.createElement('option');
+                                            placeholder.value = '';
+                                            placeholder.textContent = 'Select an option...';
+                                            sel.appendChild(placeholder);
+                                            optsList.forEach(o => {
+                                                const optEl = document.createElement('option');
+                                                optEl.value = o.Value || o.Value;
+                                                optEl.textContent = o.Label || o.Label;
+                                                if (o.IsDefault) optEl.selected = true;
+                                                sel.appendChild(optEl);
+                                            });
+                                        }
+                                    }
+                                }
+                            } catch (e) { console.error('Error applying select options to preview', e); }
                         }
                     } else {
                         showToast(result.message, 'error');
@@ -2021,6 +2021,15 @@
             
             // Click handlers will be added dynamically in updateFieldsList
             setupFieldClickHandlers();
+
+            // Show/hide options editor when fpType changes
+            const fpTypeEl = document.getElementById('fpType');
+            if (fpTypeEl) {
+                fpTypeEl.addEventListener('change', function() {
+                    const isSelect = this.value === 'select';
+                    toggleOptionsEditor(isSelect, selectedFieldData || { optionsJson: null, type: this.value, step: parseInt(document.getElementById('fpStep').value || '1') });
+                });
+            }
         });
 
         function setupFieldClickHandlers() {
@@ -2078,7 +2087,8 @@
                                 placeholder: fieldData.Placeholder || '',
                                 isRequired: fieldData.IsRequired || false,
                                 isConditional: fieldData.IsConditional || false,
-                                conditionalLogic: conditionalLogic
+                                conditionalLogic: conditionalLogic,
+                                optionsJson: fieldData.OptionsJson || null
                             });
                         }
                     }
@@ -2086,11 +2096,5 @@
             });
         }
 
-        // Update the existing updateFieldsList to maintain click handlers
-        const originalUpdateFieldsList = updateFieldsList;
-        updateFieldsList = function(step) {
-            originalUpdateFieldsList(step);
-            setupFieldClickHandlers();
-        };
     </script>
 }
