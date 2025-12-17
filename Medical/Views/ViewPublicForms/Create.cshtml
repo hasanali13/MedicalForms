@@ -1465,7 +1465,6 @@
         </div>
     </div>
 </div>
-
 <script>
         // =================================
         // GLOBAL STATE
@@ -1663,7 +1662,7 @@
 
                 if (result.success) {
                     showToast(result.message, 'success');
-                    
+
                     // Only remove from UI AFTER successful server response
                     fieldContainer.style.transition = 'opacity 0.3s';
                     fieldContainer.style.opacity = '0';
@@ -1677,7 +1676,7 @@
                         // recalc badge counts
                         try { updateCounts(); } catch (e) { }
                     }, 300);
-                    
+
                     // Remove from local data array
                     const indexToRemove = additionalFieldsData.findIndex(f => f.FieldId === fieldId);
                     if (indexToRemove > -1) {
@@ -1729,12 +1728,12 @@
         // =================================
         // Prepare client-side data for fields
         const additionalFieldsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-                                                                        additionalFields.Select(f => new { f.FieldId, f.DisplayName, f.FieldType, f.Step, f.IsRequired, f.IsConditional, f.Placeholder, f.ConditionalLogicJson, f.OptionsJson, f.FieldName })
-                                        ));
+                                                                                                                                                                                                                                                                                                additionalFields.Select(f => new { f.FieldId, f.DisplayName, f.FieldType, f.Step, f.IsRequired, f.IsConditional, f.Placeholder, f.ConditionalLogicJson, f.OptionsJson, f.FieldName })
+                                                                                                                                                                ));
 
     const customStepsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-                                                                customSteps.Select(s => new { s.FieldId, s.DisplayName, s.Step, s.Placeholder, s.OptionsJson })
-                                ));
+                                                                                                                                                                                                                                                                customSteps.Select(s => new { s.FieldId, s.DisplayName, s.Step, s.Placeholder, s.OptionsJson })
+                                                                                                                                ));
 
     const originalFields = {
         1: ["Full Name","Age","Gender","Date of Birth"],
@@ -1809,17 +1808,14 @@
                 const stepData = customSteps.find(s => s.Step === step);
                 const stepName = stepData ? stepData.DisplayName : `Step ${step}`;
 
-                container.innerHTML = `
-                    <div class="alert alert-info">
-                        <strong>${stepName}</strong><br>
-                        This is a dynamic step. Fields added to this step will appear here.
-                        <div class="mt-2">
-                            <button type="button" class="btn btn-sm btn-primary" onclick="addFieldToStep(${step})">
-                                ➕ Add Field to This Step
-                            </button>
-                        </div>
-                    </div>
+                // Show info about the step
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'alert alert-info mb-3';
+                infoDiv.innerHTML = `
+                    <strong>${stepName}</strong><br>
+                    Fields in this custom step:
                 `;
+                container.appendChild(infoDiv);
 
                 // Add fields for this custom step
                 additionalFieldsData.filter(f => f.Step === step).forEach(f => {
@@ -1830,6 +1826,16 @@
                     div.innerHTML = `<span class="drag-handle" aria-hidden="true"></span><span>${f.DisplayName}</span>`;
                     container.appendChild(div);
                 });
+
+                // Add "Add Field" button
+                const addButtonDiv = document.createElement('div');
+                addButtonDiv.className = 'mt-3';
+                addButtonDiv.innerHTML = `
+                    <button type="button" class="btn btn-sm btn-primary w-100" onclick="addFieldToStep(${step})">
+                        ➕ Add Field to This Step
+                    </button>
+                `;
+                container.appendChild(addButtonDiv);
             }
 
             // Reattach click handlers
@@ -1900,6 +1906,8 @@
         }
 
         function switchStep(step) {
+            console.log('Switching to step:', step);
+
             // Hide all steps
             document.querySelectorAll('.form-step').forEach(s => s.classList.add('hidden'));
 
@@ -1907,6 +1915,9 @@
             const stepElement = document.getElementById(`step${step}`);
             if (stepElement) {
                 stepElement.classList.remove('hidden');
+            } else {
+                console.error(`Step element #step${step} not found`);
+                return;
             }
 
             // Update step tabs
@@ -1919,8 +1930,83 @@
             // Update left-side fields list
             updateFieldsList(step);
 
+            // CRITICAL FIX: For custom steps (step > 3), ensure fields are rendered
+            if (step > 3) {
+                const stepData = customSteps.find(s => s.Step === step);
+                if (stepData) {
+                    // Find or create the fields container
+                    let fieldsContainer = document.getElementById(`step${step}AdditionalFields`);
+                    if (!fieldsContainer) {
+                        // Look for dynamic-step-fields div
+                        fieldsContainer = stepElement.querySelector('.dynamic-step-fields');
+                        if (fieldsContainer) {
+                            fieldsContainer.id = `step${step}AdditionalFields`;
+                        }
+                    }
+
+                    if (fieldsContainer) {
+                        const fields = additionalFieldsData.filter(f => f.Step === step);
+
+                        if (fields.length === 0) {
+                            fieldsContainer.innerHTML = `
+                                <div class="step-empty-message">
+                                    <p>No fields added yet.</p>
+                                    <p><button type="button" class="btn btn-sm btn-outline-primary" onclick="addFieldToStep(${step})">➕ Add Field</button></p>
+                                </div>
+                            `;
+                        } else {
+                            // Clear existing fields except the empty message
+                            const emptyMsg = fieldsContainer.querySelector('.step-empty-message');
+                            if (emptyMsg) {
+                                emptyMsg.remove();
+                            }
+
+                            // Remove existing field containers to avoid duplicates
+                            const existingFields = fieldsContainer.querySelectorAll('.additional-field-container');
+                            existingFields.forEach(field => field.remove());
+
+                            // Render all fields for this step
+                            fields.forEach(field => {
+                                const fieldHtml = `
+                                    <div class="additional-field-container" data-field-id="${field.FieldId}">
+                                        <div class="field-actions">
+                                            <button type="button" class="delete-field-btn" data-field-id="${field.FieldId}" onclick="deleteFieldHandler('${field.FieldId}', this)">
+                                                🗑️
+                                            </button>
+                                        </div>
+
+                                        <label class="form-label">
+                                            ${field.DisplayName}
+                                            ${field.IsRequired ? '<span class="text-danger">*</span>' : ''}
+                                            <span class="field-type-badge">${field.FieldType}</span>
+                                        </label>
+
+                                        ${renderFieldInput(field)}
+                                    </div>
+                                `;
+
+                                fieldsContainer.insertAdjacentHTML('beforeend', fieldHtml);
+                            });
+                        }
+                    }
+                }
+            }
+
             // If we switched to step 2, ensure allergy visibility is correct
-            try { updateAllergyVisibility(); } catch (e) { }
+            try {
+                if (step === 2) {
+                    updateAllergyVisibility();
+                }
+            } catch (e) {
+                console.error('Error updating allergy visibility:', e);
+            }
+
+            // Apply conditional logic for the current step's fields
+            try {
+                applyConditionalLogic();
+            } catch (e) {
+                console.error('Error applying conditional logic:', e);
+            }
         }
 
         // Render custom steps
@@ -1963,19 +2049,18 @@
                 const stepForm = document.createElement('div');
                 stepForm.id = `step${stepNumber}`;
                 stepForm.className = 'form-step hidden custom-step-form';
+
+                // Create fields container ID that we can reference later
+                const fieldsContainerId = `step${stepNumber}AdditionalFields`;
+
                 stepForm.innerHTML = `
                     <h4><span class="step-icon">${step.OptionsJson || '📋'}</span> ${step.DisplayName}</h4>
                     <p class="text-muted">${step.Placeholder || ''}</p>
                     <hr />
 
-                    <div id="step${stepNumber}AdditionalFields" class="dynamic-step-fields">
-                        ${fieldCount === 0
-                            ? '<div class="step-empty-message"><p>No fields added yet.</p><p><button type="button" class="btn btn-sm btn-outline-primary" onclick="addFieldToStep(' + stepNumber + ')">➕ Add Field</button></p></div>'
-                            : ''}
+                    <div id="${fieldsContainerId}" class="dynamic-step-fields">
+                        <!-- Fields will be rendered here when step is shown -->
                     </div>
-
-                    <!-- Render fields for this step -->
-                    ${renderStepFields(stepNumber)}
 
                     <div class="mt-4">
                         ${stepNumber > 1 ? `<button type="button" class="btn btn-secondary" data-prev-step="${stepNumber - 1}">Back</button>` : ''}
