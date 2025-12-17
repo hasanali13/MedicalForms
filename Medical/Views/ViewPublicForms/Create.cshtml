@@ -1466,8 +1466,7 @@
     </div>
 </div>
 
-@section Scripts {
-    <script>
+<script>
         // =================================
         // GLOBAL STATE
         // =================================
@@ -1664,6 +1663,8 @@
 
                 if (result.success) {
                     showToast(result.message, 'success');
+                    
+                    // Only remove from UI AFTER successful server response
                     fieldContainer.style.transition = 'opacity 0.3s';
                     fieldContainer.style.opacity = '0';
                     setTimeout(() => {
@@ -1676,8 +1677,14 @@
                         // recalc badge counts
                         try { updateCounts(); } catch (e) { }
                     }, 300);
+                    
+                    // Remove from local data array
+                    const indexToRemove = additionalFieldsData.findIndex(f => f.FieldId === fieldId);
+                    if (indexToRemove > -1) {
+                        additionalFieldsData.splice(indexToRemove, 1);
+                    }
                 } else {
-                    showToast(result.message, 'error');
+                    showToast(result.message || 'Failed to delete field', 'error');
                 }
             } catch (error) {
                 showToast('Error deleting field: ' + error.message, 'error');
@@ -1722,18 +1729,30 @@
         // =================================
         // Prepare client-side data for fields
         const additionalFieldsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-                                    additionalFields.Select(f => new { f.FieldId, f.DisplayName, f.FieldType, f.Step, f.IsRequired, f.IsConditional, f.Placeholder, f.ConditionalLogicJson, f.OptionsJson, f.FieldName })
-                    ));
+                                                                        additionalFields.Select(f => new { f.FieldId, f.DisplayName, f.FieldType, f.Step, f.IsRequired, f.IsConditional, f.Placeholder, f.ConditionalLogicJson, f.OptionsJson, f.FieldName })
+                                        ));
 
     const customStepsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-                                customSteps.Select(s => new { s.FieldId, s.DisplayName, s.Step, s.Placeholder, s.OptionsJson })
-                ));
+                                                                customSteps.Select(s => new { s.FieldId, s.DisplayName, s.Step, s.Placeholder, s.OptionsJson })
+                                ));
 
     const originalFields = {
         1: ["Full Name","Age","Gender","Date of Birth"],
         2: ["Has Allergies","Allergy Description","Current Medication","Height (cm)","Weight (kg)"],
         3: ["Contact Name","Relationship","Phone Number","Has Alternative Contact","Alt Contact Name","Alt Phone Number"]
     };
+
+        // Calculate the last step number
+        function getLastStepNumber() {
+            const customStepNumbers = customSteps.map(s => s.Step);
+            const maxCustomStep = customStepNumbers.length > 0 ? Math.max(...customStepNumbers) : 0;
+            return Math.max(3, maxCustomStep);
+        }
+
+        // Check if a step is the last step
+        function isLastStep(stepNumber) {
+            return stepNumber === getLastStepNumber();
+        }
 
         function updateFieldsList(step) {
             const container = document.getElementById('fieldsList');
@@ -1909,7 +1928,7 @@
             const stepsContainer = document.getElementById('customStepsContainer');
             const formsContainer = document.getElementById('customStepsForms');
 
-            if (!stepsContainer || !formsContainer || customSteps.length === 0) return;
+            if (!stepsContainer || !formsContainer) return;
 
             stepsContainer.innerHTML = '';
             formsContainer.innerHTML = '';
@@ -1959,17 +1978,17 @@
                     ${renderStepFields(stepNumber)}
 
                     <div class="mt-4">
-                        <button type="button" class="btn btn-secondary" data-prev-step="${stepNumber - 1}">Back</button>
-                        ${stepNumber === (3 + customSteps.length)
+                        ${stepNumber > 1 ? `<button type="button" class="btn btn-secondary" data-prev-step="${stepNumber - 1}">Back</button>` : ''}
+                        ${isLastStep(stepNumber)
                             ? '<button type="submit" class="btn btn-success">Submit Form</button>'
-                            : '<button type="button" class="btn btn-primary" data-next-step="${stepNumber + 1}">Next</button>'}
+                            : `<button type="button" class="btn btn-primary" data-next-step="${stepNumber + 1}">Next</button>`}
                     </div>
                 `;
 
                 formsContainer.appendChild(stepForm);
             });
 
-            // Update navigation buttons
+            // Update original steps navigation buttons
             updateNavigationButtons();
         }
 
@@ -2024,7 +2043,7 @@
                 case 'number':
                     return `<input type="number" class="form-control" placeholder="${field.Placeholder || ''}" ${field.IsRequired ? 'required' : ''}>`;
                 case 'date':
-                    return `<input type="date" class="form-control" ${field.IsRequired ? 'required' : ''}>`;
+                        return `<input type="date" class="form-control" ${field.IsRequired ? 'required' : ''}>`;
                 case 'email':
                     return `<input type="email" class="form-control" placeholder="${field.Placeholder || ''}" ${field.IsRequired ? 'required' : ''}>`;
                 case 'tel':
@@ -2034,16 +2053,47 @@
             }
         }
 
+        // Update original steps navigation buttons based on whether there are custom steps
         function updateNavigationButtons() {
-            // Update step 3 next button
+            const lastStep = getLastStepNumber();
+
+            // Update step 1: Always has Next button (to step 2)
+            const step1NextButton = document.querySelector('#step1 button[data-next-step="2"]');
+            if (step1NextButton) {
+                step1NextButton.innerHTML = 'Next';
+                step1NextButton.className = 'btn btn-primary';
+                step1NextButton.setAttribute('data-next-step', '2');
+                step1NextButton.setAttribute('type', 'button');
+            }
+
+            // Update step 2: Back button to step 1, Next button to step 3
+            const step2PrevButton = document.querySelector('#step2 button[data-prev-step="1"]');
+            const step2NextButton = document.querySelector('#step2 button[data-next-step="3"]');
+            if (step2PrevButton && step2NextButton) {
+                step2NextButton.innerHTML = 'Next';
+                step2NextButton.className = 'btn btn-primary';
+                step2NextButton.setAttribute('data-next-step', '3');
+                step2NextButton.setAttribute('type', 'button');
+            }
+
+            // Update step 3: Critical logic - check if it's the last step
+            const step3PrevButton = document.querySelector('#step3 button[data-prev-step="2"]');
             const step3NextButton = document.getElementById('step3NextButton');
-            if (step3NextButton && customSteps.length > 0) {
-                step3NextButton.setAttribute('data-next-step', '4');
-            } else if (step3NextButton) {
-                step3NextButton.innerHTML = 'Submit Form';
-                step3NextButton.className = 'btn btn-success';
-                step3NextButton.removeAttribute('data-next-step');
-                step3NextButton.setAttribute('type', 'submit');
+
+            if (step3PrevButton && step3NextButton) {
+                if (isLastStep(3)) {
+                    // Step 3 is the last step (no custom steps)
+                    step3NextButton.innerHTML = 'Submit Form';
+                    step3NextButton.className = 'btn btn-success';
+                    step3NextButton.removeAttribute('data-next-step');
+                    step3NextButton.setAttribute('type', 'submit');
+                } else {
+                    // Step 3 has custom steps after it
+                    step3NextButton.innerHTML = 'Next';
+                    step3NextButton.className = 'btn btn-primary';
+                    step3NextButton.setAttribute('data-next-step', '4');
+                    step3NextButton.setAttribute('type', 'button');
+                }
             }
 
             // Update property panel step dropdown
@@ -2470,7 +2520,7 @@
 
             if (!updatedData.DisplayName) {
                 showToast('Field label is required', 'error');
-                return;
+                    return;
             }
 
             // If dynamic field, call UpdateAdditionalField
@@ -3030,5 +3080,4 @@
             // Setup initial field click handlers
             setupFieldClickHandlers();
         });
-    </script>
-}
+</script>

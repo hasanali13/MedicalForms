@@ -447,16 +447,41 @@ namespace Medical.Controllers
                     return Json(new { success = false, message = "Step not found" });
                 }
 
+                int deletedStepNumber = stepField.Step;
+
                 // Mark step field as deleted
                 stepField.IsDeleted = true;
 
                 // Also mark all fields in this step as deleted
-                var stepNumber = stepField.Step;
-                var stepFields = existingFields.Where(f => f.Step == stepNumber).ToList();
+                var stepFields = existingFields.Where(f => f.Step == deletedStepNumber).ToList();
                 foreach (var field in stepFields)
                 {
                     field.IsDeleted = true;
                     field.UpdatedAt = DateTime.UtcNow;
+                }
+
+                // Renumber remaining steps sequentially
+                var remainingSteps = existingFields
+                    .Where(f => f.FieldType == "step" && !f.IsDeleted)
+                    .OrderBy(f => f.Step)
+                    .ToList();
+
+                // Start numbering from 4 (after the 3 static steps)
+                for (int i = 0; i < remainingSteps.Count; i++)
+                {
+                    int newStepNumber = i + 4;
+                    var oldStepNumber = remainingSteps[i].Step;
+                    remainingSteps[i].Step = newStepNumber;
+
+                    // Update all fields in this step to the new step number
+                    var fieldsInStep = existingFields
+                        .Where(f => f.Step == oldStepNumber && f.FieldType != "step" && !f.IsDeleted)
+                        .ToList();
+                    foreach (var field in fieldsInStep)
+                    {
+                        field.Step = newStepNumber;
+                        field.UpdatedAt = DateTime.UtcNow;
+                    }
                 }
 
                 configForm.AdditionalFields = existingFields;
