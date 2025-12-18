@@ -20,10 +20,37 @@ namespace Medical.Controllers
             _context = context;
         }
 
-        // GET: Create Multi-step Form
+        // GET: Create Multi-step Form (Form Builder)
         public IActionResult Create()
         {
             ViewBag.ActiveMenu = "FormBuilder";
+
+            // Get additional fields from configuration (hide soft-deleted)
+            var configForm = GetOrCreateConfigForm();
+            var allFields = configForm.AdditionalFields
+                .Where(f => f.IsActive && !f.IsDeleted)
+                .OrderBy(f => f.Step)
+                .ThenBy(f => f.DisplayOrder)
+                .ToList();
+
+            // Separate steps from regular fields
+            var steps = allFields.Where(f => f.FieldType == "step").ToList();
+            var regularFields = allFields.Where(f => f.FieldType != "step").ToList();
+
+            ViewBag.AdditionalFields = regularFields;
+            ViewBag.CustomSteps = steps; // Pass steps to view
+
+            var model = new ViewPublicForm();
+            // Load labels from config
+            model.FieldLabels = configForm.FieldLabels;
+
+            return View(model);
+        }
+
+        // GET: FillForm - User-facing form (not the builder)
+        public IActionResult FillForm()
+        {
+            ViewBag.ActiveMenu = "PublicForm";
 
             // Get additional fields from configuration (hide soft-deleted)
             var configForm = GetOrCreateConfigForm();
@@ -107,6 +134,79 @@ namespace Medical.Controllers
             }
 
             ViewBag.ActiveMenu = "FormBuilder";
+            var reloadConfigForm = GetOrCreateConfigForm();
+            var allFields = reloadConfigForm.AdditionalFields?
+                .Where(f => !f.IsDeleted && f.IsActive)
+                .OrderBy(f => f.Step)
+                .ThenBy(f => f.DisplayOrder)
+                .ToList() ?? new List<AdditionalField>();
+            
+            ViewBag.AdditionalFields = allFields.Where(f => f.FieldType != "step").ToList();
+            ViewBag.CustomSteps = allFields.Where(f => f.FieldType == "step").ToList();
+
+            return View(model);
+        }
+
+        // POST: FillForm - Handle form submission from user
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> FillForm(ViewPublicForm model)
+        {
+            try
+            {
+                if (ModelState.IsValid)
+                {
+                    model.ViewPublicFormId = Guid.NewGuid();
+                    model.CreatedAt = DateTime.UtcNow;
+                    model.IsDeleted = false;
+
+                    // Get additional fields configuration
+                    var configForm = GetOrCreateConfigForm();
+                    var additionalFields = configForm.AdditionalFields ?? new List<AdditionalField>();
+
+                    // Collect additional field values from form submission
+                    var additionalFieldsData = new Dictionary<string, AdditionalFieldValue>();
+
+                    // Only process non-step fields
+                    foreach (var field in additionalFields.Where(f => f.FieldType != "step"))
+                    {
+                        var fieldName = field.FieldName;
+                        var formKey = fieldName; // Use field ID or field name as key
+
+                        if (Request.Form.ContainsKey(formKey))
+                        {
+                            var value = Request.Form[formKey].ToString();
+                            additionalFieldsData[fieldName] = new AdditionalFieldValue
+                            {
+                                FieldId = field.FieldId,
+                                FieldName = fieldName,
+                                DisplayName = field.DisplayName,
+                                FieldType = field.FieldType,
+                                Value = value,
+                                Step = field.Step
+                            };
+                        }
+                    }
+
+                    // Store additional fields data as JSON
+                    if (additionalFieldsData.Any())
+                    {
+                        model.AdditionalFieldsJson = JsonConvert.SerializeObject(additionalFieldsData);
+                    }
+
+                    _context.ViewPublicForm.Add(model);
+                    await _context.SaveChangesAsync();
+
+                    TempData["SuccessMessage"] = "Form submitted successfully!";
+                    return RedirectToAction(nameof(Success));
+                }
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("", $"Error submitting form: {ex.Message}");
+            }
+
+            // If validation fails, return the form
             var reloadConfigForm = GetOrCreateConfigForm();
             var allFields = reloadConfigForm.AdditionalFields?
                 .Where(f => !f.IsDeleted && f.IsActive)

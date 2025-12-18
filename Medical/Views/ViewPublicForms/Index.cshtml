@@ -1,3 +1,4 @@
+@using System.Linq
 @model IEnumerable<Medical.Models.ViewPublicForm>
 @{
     ViewData["Title"] = "Form Submissions";
@@ -337,14 +338,22 @@
                             <td>
                                 <div class="user-info">
                                     <div class="user-avatar">
-                                        @if (!string.IsNullOrEmpty(item.FullName))
-                                        {
-                                            @item.FullName.Split(' ').Select(x => x[0]).Take(2).Aggregate("", (a, b) => a + b)
+                                        @{
+                                            string initials = "A";
+                                            if (!string.IsNullOrWhiteSpace(item.FullName))
+                                            {
+                                                var parts = item.FullName.Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
+                                                if (parts.Length > 0)
+                                                {
+                                                    initials = string.Concat(
+                                                        parts.Take(Math.Min(2, parts.Length))
+                                                            .Where(p => !string.IsNullOrEmpty(p))
+                                                            .Select(p => p[0])
+                                                    );
+                                                }
+                                            }
                                         }
-                                        else
-                                        {
-                                            <text>A</text>
-                                        }
+                                        @initials
                                     </div>
                                     <div class="user-details">
                                         <h6>
@@ -480,7 +489,7 @@
                                                             }
                                                         }
                                                         
-                                                        @if (shouldDisplay)
+                                                        if (shouldDisplay)
                                                         {
                                                             <div style="margin-bottom: 8px;">
                                                                 @if (!string.IsNullOrEmpty(stepName))

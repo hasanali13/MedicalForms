@@ -1,0 +1,830 @@
+﻿@model Medical.Models.ViewPublicForm
+@{
+    ViewData["Title"] = "Fill Form";
+    var additionalFields = ViewBag.AdditionalFields as List<Medical.Models.AdditionalField> ?? new List<Medical.Models.AdditionalField>();
+    var customSteps = ViewBag.CustomSteps as List<Medical.Models.AdditionalField> ?? new List<Medical.Models.AdditionalField>();
+}
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        padding: 20px;
+        min-height: 100vh;
+    }
+
+    .container-fillform {
+        max-width: 700px;
+        margin: 40px auto;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .form-header {
+        padding: 40px;
+        text-align: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .form-header h1 {
+        margin: 0 0 10px 0;
+        font-size: 32px;
+        font-weight: 700;
+    }
+
+    .form-header p {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 16px;
+    }
+
+    .steps-indicator {
+        display: flex;
+        justify-content: space-between;
+        padding: 30px 40px;
+        background: #f8f9fa;
+        position: relative;
+        flex-wrap: wrap;
+    }
+
+    .steps-indicator::before {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 50px;
+        right: 50px;
+        height: 2px;
+        background: #e0e0e0;
+        z-index: 0;
+    }
+
+    .step-badge {
+        flex: 1;
+        text-align: center;
+        position: relative;
+        z-index: 1;
+    }
+
+    .step-number {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: white;
+        border: 2px solid #e0e0e0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 10px;
+        font-weight: 600;
+        color: #999;
+        transition: all 0.3s;
+    }
+
+    .step-number.active {
+        background: #667eea;
+        border-color: #667eea;
+        color: white;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .step-number.completed {
+        background: #48bb78;
+        border-color: #48bb78;
+        color: white;
+    }
+
+    .step-label {
+        font-size: 12px;
+        color: #999;
+        font-weight: 500;
+        margin-top: 8px;
+    }
+
+    .step-label.active {
+        color: #667eea;
+        font-weight: 600;
+    }
+
+    .form-content {
+        padding: 40px;
+        min-height: 400px;
+    }
+
+    .form-step {
+        display: none;
+        animation: fadeIn 0.3s ease-in;
+    }
+
+    .form-step.active {
+        display: block;
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .step-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .step-icon {
+        font-size: 28px;
+    }
+
+    .step-description {
+        font-size: 14px;
+        color: #718096;
+        margin-bottom: 30px;
+        line-height: 1.6;
+    }
+
+    .form-group {
+        margin-bottom: 24px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 8px;
+    }
+
+    .required {
+        color: #f56565;
+        margin-left: 4px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid #cbd5e0;
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+        background: white;
+        transition: all 0.3s;
+        appearance: none;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        background: white;
+    }
+
+    .form-control.form-select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%234a5568' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 36px;
+        cursor: pointer;
+    }
+
+    textarea.form-control {
+        min-height: 100px;
+        resize: vertical;
+        font-family: inherit;
+    }
+
+    .form-control.error {
+        border-color: #f56565;
+        background-color: #fff5f5;
+    }
+
+    .form-control.error:focus {
+        box-shadow: 0 0 0 3px rgba(245, 101, 101, 0.1);
+    }
+
+    .form-group.hidden {
+        display: none;
+    }
+
+    .form-check {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .form-check-input {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        flex-shrink: 0;
+        accent-color: #667eea;
+    }
+
+    .form-check-label {
+        font-size: 14px;
+        color: #2d3748;
+        cursor: pointer;
+        margin-bottom: 0;
+    }
+
+    .form-actions {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 40px;
+        padding-top: 24px;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .btn {
+        padding: 12px 28px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: inline-block;
+        text-align: center;
+    }
+
+    .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .btn-secondary {
+        background: white;
+        border: 1px solid #cbd5e0;
+        color: #2d3748;
+        margin-right: auto;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+        background: #f7fafc;
+        border-color: #a0aec0;
+    }
+
+    .btn-primary {
+        background: #667eea;
+        color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background: #5568d3;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-success {
+        background: #48bb78;
+        color: white;
+    }
+
+    .btn-success:hover:not(:disabled) {
+        background: #38a169;
+        box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+    }
+
+    .progress-text {
+        font-size: 13px;
+        color: #718096;
+        text-align: center;
+        margin-top: 20px;
+    }
+
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+    }
+
+    .toast {
+        background: #48bb78;
+        color: white;
+        padding: 16px 20px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        animation: slideIn 0.3s ease-out;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 300px;
+    }
+
+    .toast.error {
+        background: #f56565;
+    }
+
+    .toast.info {
+        background: #4299e1;
+    }
+
+    @@keyframes slideIn {
+        from { transform: translateX(400px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+    @@media (max-width: 768px) {
+        .container-fillform {
+            margin: 20px auto;
+        }
+
+        .form-header {
+            padding: 30px 20px;
+        }
+
+        .form-header h1 {
+            font-size: 24px;
+        }
+
+        .steps-indicator {
+            padding: 20px;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .steps-indicator::before {
+            display: none;
+        }
+
+        .form-content {
+            padding: 20px;
+        }
+
+        .step-title {
+            font-size: 20px;
+        }
+
+        .form-actions {
+            flex-direction: column;
+        }
+
+        .btn-secondary {
+            margin-right: 0;
+        }
+
+        .btn {
+            width: 100%;
+        }
+
+        .toast {
+            min-width: auto;
+            max-width: 90vw;
+        }
+    }
+</style>
+
+<form asp-action="FillForm" method="post" id="fillForm">
+    @Html.AntiForgeryToken()
+
+    <div class="container-fillform">
+        <div class="form-header">
+            <h1>Medical Form</h1>
+            <p>Please complete all required fields</p>
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="steps-indicator" id="stepsIndicator">
+            <!-- Generated dynamically -->
+        </div>
+
+        <!-- Form Content -->
+        <div class="form-content" id="formContent">
+            <!-- Steps rendered dynamically -->
+        </div>
+
+        <!-- Form Actions -->
+        <div style="padding: 0 40px 40px 40px;">
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" id="prevBtn" style="display:none;">
+                    ← Back
+                </button>
+                <button type="button" class="btn btn-primary" id="nextBtn">
+                    Next →
+                </button>
+                <button type="submit" class="btn btn-success" id="submitBtn" style="display:none;">
+                    ✓ Submit
+                </button>
+            </div>
+
+            <div class="progress-text">
+                Step <span id="currentStep">1</span> of <span id="totalSteps">1</span>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+    // Data from server
+    const allAdditionalFields = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        additionalFields.Select(f => new { f.FieldId, f.DisplayName, f.FieldType, f.Step, f.IsRequired, f.IsConditional, f.Placeholder, f.ConditionalLogicJson, f.OptionsJson, f.FieldName, f.InputType })
+    ));
+
+    const allCustomSteps = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        customSteps.Select(s => new { s.FieldId, s.DisplayName, s.Step, s.Placeholder, s.OptionsJson })
+    ));
+
+    // Static field configurations
+    const staticFieldsMap = {
+        1: [
+            { key: 'FullName', label: 'Full Name', type: 'text', required: false },
+            { key: 'Age', label: 'Age', type: 'number', required: false },
+            { key: 'Gender', label: 'Gender', type: 'select', options: ['Male', 'Female', 'Other', 'Prefer not to say'], required: false },
+            { key: 'DateOfBirth', label: 'Date of Birth', type: 'date', required: false }
+        ],
+        2: [
+            { key: 'HasAllergies', label: 'Has Allergies', type: 'select', options: ['', 'Yes', 'No'], required: false },
+            { key: 'AllergyDescription', label: 'Allergy Description', type: 'textarea', required: false },
+            { key: 'CurrentMedication', label: 'Current Medication', type: 'textarea', required: false },
+            { key: 'HeightCm', label: 'Height (cm)', type: 'number', required: false },
+            { key: 'WeightKg', label: 'Weight (kg)', type: 'number', required: false }
+        ],
+        3: [
+            { key: 'ContactName', label: 'Contact Name', type: 'text', required: false },
+            { key: 'Relationship', label: 'Relationship', type: 'text', required: false },
+            { key: 'PhoneNumber', label: 'Phone Number', type: 'tel', required: false },
+            { key: 'HasAlternativeContact', label: 'Has Alternative Contact', type: 'checkbox', required: false },
+            { key: 'AltContactName', label: 'Alt Contact Name', type: 'text', required: false },
+            { key: 'AltPhoneNumber', label: 'Alt Phone Number', type: 'tel', required: false }
+        ]
+    };
+
+    // State
+    let currentStep = 1;
+    let customSteps = allCustomSteps || [];
+    let formData = {};
+
+    // Get last step number
+    function getLastStep() {
+        const customStepNums = customSteps.map(s => s.Step);
+        const maxCustom = customStepNums.length > 0 ? Math.max(...customStepNums) : 0;
+        return Math.max(3, maxCustom);
+    }
+
+    // Render step indicator
+    function renderIndicator() {
+        const container = document.getElementById('stepsIndicator');
+        container.innerHTML = '';
+
+        const allSteps = [
+            { num: 1, name: 'Personal Info' },
+            { num: 2, name: 'Health Details' },
+            { num: 3, name: 'Emergency Contact' }
+        ];
+
+        customSteps.forEach(s => {
+            allSteps.push({ num: s.Step, name: s.DisplayName });
+        });
+
+        allSteps.sort((a, b) => a.num - b.num);
+
+        allSteps.forEach(step => {
+            const isActive = step.num === currentStep;
+            const isCompleted = step.num < currentStep;
+
+            const badge = document.createElement('div');
+            badge.className = 'step-badge';
+
+            const number = document.createElement('div');
+            number.className = 'step-number';
+            if (isActive) number.classList.add('active');
+            if (isCompleted) number.classList.add('completed');
+            number.textContent = isCompleted ? '✓' : step.num;
+
+            const label = document.createElement('div');
+            label.className = 'step-label';
+            if (isActive) label.classList.add('active');
+            label.textContent = step.name;
+
+            badge.appendChild(number);
+            badge.appendChild(label);
+            container.appendChild(badge);
+        });
+
+        document.getElementById('currentStep').textContent = currentStep;
+        document.getElementById('totalSteps').textContent = getLastStep();
+    }
+
+    // Render form steps
+    function renderForm() {
+        const container = document.getElementById('formContent');
+        container.innerHTML = '';
+
+        const allStepNums = [1, 2, 3, ...customSteps.map(s => s.Step)];
+        const uniqueSteps = [...new Set(allStepNums)].sort((a, b) => a - b);
+
+        uniqueSteps.forEach(stepNum => {
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'form-step';
+            if (stepNum === currentStep) stepDiv.classList.add('active');
+            stepDiv.id = `step-${stepNum}`;
+
+            // Step title and description
+            let title = '', desc = '', icon = '';
+
+            if (stepNum === 1) {
+                title = 'Personal Information';
+                desc = 'Please provide your basic information.';
+            } else if (stepNum === 2) {
+                title = 'Health Details';
+                desc = 'Tell us about your health.';
+            } else if (stepNum === 3) {
+                title = 'Emergency Contact';
+                desc = 'Provide emergency contact information.';
+            } else {
+                const custom = customSteps.find(s => s.Step === stepNum);
+                if (custom) {
+                    icon = custom.OptionsJson || '📋';
+                    title = custom.DisplayName;
+                    desc = custom.Placeholder || '';
+                }
+            }
+
+            const titleEl = document.createElement('div');
+            titleEl.className = 'step-title';
+            if (icon) titleEl.innerHTML = `<span class="step-icon">${icon}</span>${escapeHtml(title)}`;
+            else titleEl.textContent = title;
+            stepDiv.appendChild(titleEl);
+
+            if (desc) {
+                const descEl = document.createElement('p');
+                descEl.className = 'step-description';
+                descEl.textContent = desc;
+                stepDiv.appendChild(descEl);
+            }
+
+            // Render static fields
+            const staticFields = staticFieldsMap[stepNum] || [];
+            staticFields.forEach(field => {
+                stepDiv.appendChild(renderField(field.key, field, 'static'));
+            });
+
+            // Render dynamic fields
+            const dynamicFields = allAdditionalFields.filter(f => f.Step === stepNum);
+            dynamicFields.forEach(field => {
+                stepDiv.appendChild(renderField(field.FieldId, field, 'dynamic'));
+            });
+
+            container.appendChild(stepDiv);
+        });
+
+        setupFormListeners();
+    }
+
+    // Render single field
+    function renderField(fieldId, field, type) {
+        const group = document.createElement('div');
+        group.className = 'form-group';
+        group.setAttribute('data-field-id', fieldId);
+        group.setAttribute('data-field-type', type);
+
+        const label = document.createElement('label');
+        label.className = 'form-label';
+
+        const labelText = type === 'static' ? field.label : field.DisplayName;
+        const isRequired = type === 'static' ? field.required : field.IsRequired;
+        const fieldType = type === 'static' ? field.type : field.FieldType;
+        const placeholder = type === 'static' ? (field.placeholder || '') : (field.Placeholder || '');
+
+        label.textContent = labelText;
+        if (isRequired) {
+            const span = document.createElement('span');
+            span.className = 'required';
+            span.textContent = '*';
+            label.appendChild(span);
+        }
+
+        group.appendChild(label);
+
+        // Create input based on type
+        let input;
+
+        if (fieldType === 'textarea') {
+            input = document.createElement('textarea');
+            input.className = 'form-control';
+            input.placeholder = placeholder;
+            input.rows = 4;
+        } else if (fieldType === 'select') {
+            input = document.createElement('select');
+            input.className = 'form-control form-select';
+
+            const options = type === 'static' ? field.options : (field.OptionsJson ? JSON.parse(field.OptionsJson).map(o => o.Label || o.label) : []);
+            options.forEach(opt => {
+                const optEl = document.createElement('option');
+                optEl.value = opt;
+                optEl.textContent = opt;
+                input.appendChild(optEl);
+            });
+        } else if (fieldType === 'checkbox') {
+            const checkDiv = document.createElement('div');
+            checkDiv.className = 'form-check';
+
+            input = document.createElement('input');
+            input.type = 'checkbox';
+            input.className = 'form-check-input';
+
+            const checkLabel = document.createElement('label');
+            checkLabel.className = 'form-check-label';
+            checkLabel.textContent = labelText;
+
+            checkDiv.appendChild(input);
+            checkDiv.appendChild(checkLabel);
+
+            group.innerHTML = '';
+            group.appendChild(checkDiv);
+            return group;
+        } else if (fieldType === 'date') {
+            input = document.createElement('input');
+            input.type = 'date';
+            input.className = 'form-control';
+        } else if (fieldType === 'number') {
+            input = document.createElement('input');
+            input.type = 'number';
+            input.className = 'form-control';
+            input.placeholder = placeholder;
+        } else if (fieldType === 'email') {
+            input = document.createElement('input');
+            input.type = 'email';
+            input.className = 'form-control';
+            input.placeholder = placeholder;
+        } else if (fieldType === 'tel') {
+            input = document.createElement('input');
+            input.type = 'tel';
+            input.className = 'form-control';
+            input.placeholder = placeholder;
+        } else {
+            input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control';
+            input.placeholder = placeholder;
+        }
+
+        input.name = fieldId;
+        if (isRequired) input.required = true;
+
+        if (formData[fieldId] !== undefined) {
+            if (fieldType === 'checkbox') input.checked = formData[fieldId];
+            else input.value = formData[fieldId];
+        }
+
+        input.addEventListener('change', () => {
+            formData[fieldId] = fieldType === 'checkbox' ? input.checked : input.value;
+            applyConditional();
+        });
+
+        group.appendChild(input);
+        return group;
+    }
+
+    // Apply conditional logic
+    function applyConditional() {
+        allAdditionalFields.forEach(field => {
+            if (!field.IsConditional || !field.ConditionalLogicJson) return;
+
+            try {
+                const condition = JSON.parse(field.ConditionalLogicJson);
+                const depField = document.querySelector(`[name="${condition.DependsOnFieldKey}"]`);
+                const fieldGroup = document.querySelector(`[data-field-id="${field.FieldId}"]`);
+
+                if (!depField || !fieldGroup) return;
+
+                const depValue = depField.type === 'checkbox' ? depField.checked : depField.value;
+                const shouldShow = String(depValue).toLowerCase() === String(condition.ShowWhenValue).toLowerCase();
+
+                if (shouldShow) {
+                    fieldGroup.classList.remove('hidden');
+                } else {
+                    fieldGroup.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error('Conditional error:', e);
+            }
+        });
+    }
+
+    // Validate step
+    function validateStep(step) {
+        const stepEl = document.getElementById(`step-${step}`);
+        if (!stepEl) return true;
+
+        const requiredInputs = stepEl.querySelectorAll('[required]');
+        let valid = true;
+
+        requiredInputs.forEach(input => {
+            const group = input.closest('.form-group');
+            if (group && group.classList.contains('hidden')) return;
+
+            let isValid = false;
+            if (input.type === 'checkbox') {
+                isValid = input.checked;
+            } else {
+                isValid = input.value.trim() !== '';
+            }
+
+            if (!isValid) {
+                input.classList.add('error');
+                valid = false;
+            } else {
+                input.classList.remove('error');
+            }
+        });
+
+        return valid;
+    }
+
+    // Navigate to step
+    function goToStep(step) {
+        const lastStep = getLastStep();
+        if (step < 1 || step > lastStep) return;
+
+        if (step > currentStep && !validateStep(currentStep)) {
+            showToast('Please fill all required fields', 'error');
+            return;
+        }
+
+        document.getElementById(`step-${currentStep}`).classList.remove('active');
+        currentStep = step;
+        document.getElementById(`step-${currentStep}`).classList.add('active');
+
+        renderIndicator();
+        updateButtons();
+        applyConditional();
+        window.scrollTo(0, 0);
+    }
+
+    // Update button visibility
+    function updateButtons() {
+        const lastStep = getLastStep();
+        document.getElementById('prevBtn').style.display = currentStep === 1 ? 'none' : 'inline-block';
+        document.getElementById('nextBtn').style.display = currentStep === lastStep ? 'none' : 'inline-block';
+        document.getElementById('submitBtn').style.display = currentStep === lastStep ? 'inline-block' : 'none';
+    }
+
+    // Setup form listeners
+    function setupFormListeners() {
+        // Already handled in renderField
+    }
+
+    // Show toast
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+
+    // Escape HTML
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    // Form submit
+    document.getElementById('fillForm').addEventListener('submit', function(e) {
+        if (!validateStep(currentStep)) {
+            e.preventDefault();
+            showToast('Please fill all required fields', 'error');
+            return;
+        }
+
+        showToast('Submitting...', 'info');
+    });
+
+    // Button handlers
+    document.getElementById('nextBtn').addEventListener('click', () => goToStep(currentStep + 1));
+    document.getElementById('prevBtn').addEventListener('click', () => goToStep(currentStep - 1));
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        renderIndicator();
+        renderForm();
+        updateButtons();
+        applyConditional();
+    });
+</script>
