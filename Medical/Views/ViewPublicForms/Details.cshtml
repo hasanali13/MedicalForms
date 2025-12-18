@@ -1,10 +1,24 @@
-﻿@model Medical.Models.ViewPublicForm
+@model Medical.Models.ViewPublicForm
 @{
     ViewData["Title"] = "Form Submission Details";
     ViewBag.ActiveMenu = "ViewForms";
 
     var additionalFieldsData = ViewBag.AdditionalFieldsData as Dictionary<string, Medical.Controllers.AdditionalFieldValue>
         ?? new Dictionary<string, Medical.Controllers.AdditionalFieldValue>();
+    
+    var customSteps = ViewBag.CustomSteps as List<Medical.Models.AdditionalField> ?? new List<Medical.Models.AdditionalField>();
+    
+    // Get all unique step numbers from additional fields data
+    var allSteps = additionalFieldsData.Values
+        .GroupBy(f => f.Step)
+        .OrderBy(g => g.Key)
+        .Select(g => g.Key)
+        .ToList();
+    
+    // Include all steps 1-3 and any custom steps
+    var displaySteps = new List<int> { 1, 2, 3 };
+    displaySteps.AddRange(allSteps.Where(s => s > 3));
+    displaySteps = displaySteps.Distinct().OrderBy(s => s).ToList();
 }
 
 <style>
@@ -81,391 +95,80 @@
         </div>
 
         <div class="card-body">
-            <!-- STEP 1: Personal Information -->
-            <div class="field-section">
-                <h4 class="field-section-title">
-                    Step 1: Personal Information
-                    <span class="badge-step">Step 1</span>
-                </h4>
+            <!-- Dynamically render all steps -->
+            @foreach (var stepNum in displaySteps)
+            {
+                var stepTitle = GetStepTitle(stepNum);
+                var stepFields = GetStepFields(stepNum, Model);
+                var additionalFields = additionalFieldsData.Values.Where(f => f.Step == stepNum).ToList();
+                
+                <div class="field-section">
+                    <h4 class="field-section-title">
+                        Step @stepNum: @stepTitle
+                        <span class="badge-step">Step @stepNum</span>
+                    </h4>
 
-                <div class="row">
-                    <!-- Original Fields - Step 1 -->
-                    <div class="col-md-6">
-                        <div class="field-row">
-                            <div class="field-label">Full Name</div>
-                            <div class="field-value">
-                                @if (!string.IsNullOrEmpty(Model.FullName))
-                                {
-                                    @Model.FullName
-                                }
-                                else
-                                {
-                                    <span class="empty-field">Not provided</span>
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="field-row">
-                            <div class="field-label">Age</div>
-                            <div class="field-value">
-                                @if (Model.Age.HasValue)
-                                {
-                                    @Model.Age
-                                }
-                                else
-                                {
-                                    <span class="empty-field">Not provided</span>
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="field-row">
-                            <div class="field-label">Gender</div>
-                            <div class="field-value">
-                                @if (!string.IsNullOrEmpty(Model.Gender))
-                                {
-                                    @Model.Gender
-                                }
-                                else
-                                {
-                                    <span class="empty-field">Not provided</span>
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="field-row">
-                            <div class="field-label">Date of Birth</div>
-                            <div class="field-value">
-                                @if (Model.DateOfBirth.HasValue)
-                                {
-                                    @Model.DateOfBirth.Value.ToString("yyyy-MM-dd")
-                                }
-                                else
-                                {
-                                    <span class="empty-field">Not provided</span>
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Additional Fields - Step 1 -->
-                    @foreach (var field in additionalFieldsData.Values.Where(f => f.Step == 1))
-                    {
-                        <div class="col-md-6">
-                            <div class="field-row">
-                                <div class="field-label">
-                                    @field.DisplayName
-                                    <small class="text-muted d-block">@field.FieldType</small>
-                                </div>
-                                <div class="field-value">
-                                    @if (!string.IsNullOrEmpty(field.Value))
-                                    {
-                                        if (field.FieldType.ToLower() == "checkbox")
-                                        {
-                                            @(field.Value == "true" ? "✓ Yes" : "✗ No")
-                                        }
-                                        else if (field.FieldType.ToLower() == "date" && DateTime.TryParse(field.Value, out DateTime dateValue))
-                                        {
-                                            @dateValue.ToString("yyyy-MM-dd")
-                                        }
-                                        else
+                    <div class="row">
+                        <!-- Original Fields for Steps 1-3 -->
+                        @foreach (var field in stepFields)
+                        {
+                            <div class="col-md-6">
+                                <div class="field-row">
+                                    <div class="field-label">@field.Key</div>
+                                    <div class="field-value">
+                                        @if (!string.IsNullOrEmpty(field.Value))
                                         {
                                             @field.Value
                                         }
-                                    }
-                                    else
-                                    {
-                                        <span class="empty-field">Not provided</span>
-                                    }
+                                        else
+                                        {
+                                            <span class="empty-field">Not provided</span>
+                                        }
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    }
-                </div>
-            </div>
+                        }
 
-            <!-- STEP 2: Health Details -->
-            <div class="field-section">
-                <h4 class="field-section-title">
-                    Step 2: Health Details
-                    <span class="badge-step">Step 2</span>
-                </h4>
-
-                <div class="row">
-                    <!-- Original Fields - Step 2 -->
-                    <div class="col-md-6">
-                        <div class="field-row">
-                            <div class="field-label">Has Allergies</div>
-                            <div class="field-value">
-                                @if (Model.HasAllergies.HasValue)
-                                {
-                                    @(Model.HasAllergies.Value ? "Yes" : "No")
-                                }
-                                else
-                                {
-                                    <span class="empty-field">Not provided</span>
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="field-row">
-                            <div class="field-label">Allergy Description</div>
-                            <div class="field-value">
-                                @if (!string.IsNullOrEmpty(Model.AllergyDescription))
-                                {
-                                    @Model.AllergyDescription
-                                }
-                                else
-                                {
-                                    <span class="empty-field">Not provided</span>
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="field-row">
-                            <div class="field-label">Current Medication</div>
-                            <div class="field-value">
-                                @if (!string.IsNullOrEmpty(Model.CurrentMedication))
-                                {
-                                    @Model.CurrentMedication
-                                }
-                                else
-                                {
-                                    <span class="empty-field">Not provided</span>
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="field-row">
-                            <div class="field-label">Height (cm)</div>
-                            <div class="field-value">
-                                @if (Model.HeightCm.HasValue)
-                                {
-                                    @Model.HeightCm.Value.ToString("0.##")
-                                }
-                                else
-                                {
-                                    <span class="empty-field">Not provided</span>
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="field-row">
-                            <div class="field-label">Weight (kg)</div>
-                            <div class="field-value">
-                                @if (Model.WeightKg.HasValue)
-                                {
-                                    @Model.WeightKg.Value.ToString("0.##")
-                                }
-                                else
-                                {
-                                    <span class="empty-field">Not provided</span>
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Additional Fields - Step 2 -->
-                    @foreach (var field in additionalFieldsData.Values.Where(f => f.Step == 2))
-                    {
-                        <div class="col-md-6">
-                            <div class="field-row">
-                                <div class="field-label">
-                                    @field.DisplayName
-                                    <small class="text-muted d-block">@field.FieldType</small>
-                                </div>
-                                <div class="field-value">
-                                    @if (!string.IsNullOrEmpty(field.Value))
-                                    {
-                                        if (field.FieldType.ToLower() == "checkbox")
+                        <!-- Additional Fields for all steps -->
+                        @foreach (var field in additionalFields)
+                        {
+                            <div class="col-md-6">
+                                <div class="field-row">
+                                    <div class="field-label">
+                                        @field.DisplayName
+                                        <small class="text-muted d-block">@field.FieldType</small>
+                                    </div>
+                                    <div class="field-value">
+                                        @if (!string.IsNullOrEmpty(field.Value))
                                         {
-                                            @(field.Value == "true" ? "✓ Yes" : "✗ No")
-                                        }
-                                        else if (field.FieldType.ToLower() == "date" && DateTime.TryParse(field.Value, out DateTime dateValue))
-                                        {
-                                            @dateValue.ToString("yyyy-MM-dd")
-                                        }
-                                        else if (field.FieldType.ToLower() == "textarea")
-                                        {
-                                            <div style="white-space: pre-line">@field.Value</div>
+                                            if (field.FieldType.ToLower() == "checkbox")
+                                            {
+                                                @(field.Value == "true" ? "? Yes" : "? No")
+                                            }
+                                            else if (field.FieldType.ToLower() == "date" && DateTime.TryParse(field.Value, out DateTime dateValue))
+                                            {
+                                                @dateValue.ToString("yyyy-MM-dd")
+                                            }
+                                            else if (field.FieldType.ToLower() == "textarea")
+                                            {
+                                                <div style="white-space: pre-line">@field.Value</div>
+                                            }
+                                            else
+                                            {
+                                                @field.Value
+                                            }
                                         }
                                         else
                                         {
-                                            @field.Value
+                                            <span class="empty-field">Not provided</span>
                                         }
-                                    }
-                                    else
-                                    {
-                                        <span class="empty-field">Not provided</span>
-                                    }
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    }
+                        }
+                    </div>
                 </div>
-            </div>
-
-            <!-- STEP 3: Emergency Contact -->
-            <div class="field-section">
-                <h4 class="field-section-title">
-                    Step 3: Emergency Contact
-                    <span class="badge-step">Step 3</span>
-                </h4>
-
-                <div class="row">
-                    <!-- Original Fields - Step 3 -->
-                    <div class="col-md-6">
-                        <div class="field-row">
-                            <div class="field-label">Contact Name</div>
-                            <div class="field-value">
-                                @if (!string.IsNullOrEmpty(Model.ContactName))
-                                {
-                                    @Model.ContactName
-                                }
-                                else
-                                {
-                                    <span class="empty-field">Not provided</span>
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="field-row">
-                            <div class="field-label">Relationship</div>
-                            <div class="field-value">
-                                @if (!string.IsNullOrEmpty(Model.Relationship))
-                                {
-                                    @Model.Relationship
-                                }
-                                else
-                                {
-                                    <span class="empty-field">Not provided</span>
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="field-row">
-                            <div class="field-label">Phone Number</div>
-                            <div class="field-value">
-                                @if (!string.IsNullOrEmpty(Model.PhoneNumber))
-                                {
-                                    @Model.PhoneNumber
-                                }
-                                else
-                                {
-                                    <span class="empty-field">Not provided</span>
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="field-row">
-                            <div class="field-label">Has Alternative Contact</div>
-                            <div class="field-value">
-                                @if (Model.HasAlternativeContact.HasValue)
-                                {
-                                    @(Model.HasAlternativeContact.Value ? "Yes" : "No")
-                                }
-                                else
-                                {
-                                    <span class="empty-field">Not provided</span>
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    @if (Model.HasAlternativeContact.HasValue && Model.HasAlternativeContact.Value)
-                    {
-                        <div class="col-md-6">
-                            <div class="field-row">
-                                <div class="field-label">Alternative Contact Name</div>
-                                <div class="field-value">
-                                    @if (!string.IsNullOrEmpty(Model.AltContactName))
-                                    {
-                                        @Model.AltContactName
-                                    }
-                                    else
-                                    {
-                                        <span class="empty-field">Not provided</span>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div class="field-row">
-                                <div class="field-label">Alternative Phone Number</div>
-                                <div class="field-value">
-                                    @if (!string.IsNullOrEmpty(Model.AltPhoneNumber))
-                                    {
-                                        @Model.AltPhoneNumber
-                                    }
-                                    else
-                                    {
-                                        <span class="empty-field">Not provided</span>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                    }
-
-                    <!-- Additional Fields - Step 3 -->
-                    @foreach (var field in additionalFieldsData.Values.Where(f => f.Step == 3))
-                    {
-                        <div class="col-md-6">
-                            <div class="field-row">
-                                <div class="field-label">
-                                    @field.DisplayName
-                                    <small class="text-muted d-block">@field.FieldType</small>
-                                </div>
-                                <div class="field-value">
-                                    @if (!string.IsNullOrEmpty(field.Value))
-                                    {
-                                        if (field.FieldType.ToLower() == "checkbox")
-                                        {
-                                            @(field.Value == "true" ? "✓ Yes" : "✗ No")
-                                        }
-                                        else if (field.FieldType.ToLower() == "date" && DateTime.TryParse(field.Value, out DateTime dateValue))
-                                        {
-                                            @dateValue.ToString("yyyy-MM-dd")
-                                        }
-                                        else if (field.FieldType.ToLower() == "textarea")
-                                        {
-                                            <div style="white-space: pre-line">@field.Value</div>
-                                        }
-                                        else
-                                        {
-                                            @field.Value
-                                        }
-                                    }
-                                    else
-                                    {
-                                        <span class="empty-field">Not provided</span>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                    }
-                </div>
-            </div>
+            }
 
             <!-- Summary Section -->
             <div class="field-section">
@@ -507,6 +210,22 @@
                             </div>
                         </div>
                     </div>
+
+                    @foreach (var stepNum in displaySteps.Where(s => s > 3))
+                    {
+                        var customStep = customSteps.FirstOrDefault(cs => cs.Step == stepNum);
+                        var customStepTitle = customStep?.DisplayName ?? $"Step {stepNum}";
+                        var fieldCount = additionalFieldsData.Values.Count(f => f.Step == stepNum);
+                        
+                        <div class="col-md-4">
+                            <div class="field-card">
+                                <h6><i class="fas fa-list me-2"></i>@customStepTitle</h6>
+                                <div class="mb-2">
+                                    <small>Fields: @fieldCount</small>
+                                </div>
+                            </div>
+                        </div>
+                    }
                 </div>
             </div>
 
@@ -562,9 +281,58 @@
 
 @section Scripts {
     <script>
-        // Add any JavaScript if needed
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Details page loaded');
         });
     </script>
+}
+
+@functions {
+    private string GetStepTitle(int step)
+    {
+        switch (step)
+        {
+            case 1: return "Personal Information";
+            case 2: return "Health Details";
+            case 3: return "Emergency Contact";
+            default: return "Step " + step;
+        }
+    }
+
+    private IEnumerable<KeyValuePair<string, string>> GetStepFields(int step, Medical.Models.ViewPublicForm model)
+    {
+        switch (step)
+        {
+            case 1:
+                return new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("Full Name", model.FullName),
+                    new KeyValuePair<string, string>("Age", model.Age.HasValue ? model.Age.Value.ToString() : ""),
+                    new KeyValuePair<string, string>("Gender", model.Gender),
+                    new KeyValuePair<string, string>("Date of Birth", model.DateOfBirth.HasValue ? model.DateOfBirth.Value.ToString("yyyy-MM-dd") : ""),
+                };
+            case 2:
+                return new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("Has Allergies", model.HasAllergies.HasValue ? (model.HasAllergies.Value ? "Yes" : "No") : ""),
+                    new KeyValuePair<string, string>("Allergy Description", model.AllergyDescription),
+                    new KeyValuePair<string, string>("Current Medication", model.CurrentMedication),
+                    new KeyValuePair<string, string>("Height (cm)", model.HeightCm.HasValue ? model.HeightCm.Value.ToString("0.##") : ""),
+                    new KeyValuePair<string, string>("Weight (kg)", model.WeightKg.HasValue ? model.WeightKg.Value.ToString("0.##") : ""),
+                };
+            case 3:
+                return new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("Contact Name", model.ContactName),
+                    new KeyValuePair<string, string>("Relationship", model.Relationship),
+                    new KeyValuePair<string, string>("Phone Number", model.PhoneNumber),
+                    new KeyValuePair<string, string>("Has Alternative Contact", model.HasAlternativeContact.HasValue ? (model.HasAlternativeContact.Value ? "Yes" : "No") : ""),
+                    new KeyValuePair<string, string>("Alternative Contact Name", model.HasAlternativeContact.HasValue && model.HasAlternativeContact.Value ? model.AltContactName : ""),
+                    new KeyValuePair<string, string>("Alternative Phone Number", model.HasAlternativeContact.HasValue && model.HasAlternativeContact.Value ? model.AltPhoneNumber : ""),
+                };
+            default:
+                // Custom steps don't have original fields
+                return Enumerable.Empty<KeyValuePair<string, string>>();
+        }
+    }
 }

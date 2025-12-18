@@ -62,12 +62,13 @@ namespace Medical.Controllers
 
                     // Get additional fields configuration
                     var configForm = GetOrCreateConfigForm();
-                    var additionalFields = configForm.AdditionalFields;
+                    var additionalFields = configForm.AdditionalFields ?? new List<AdditionalField>();
 
                     // Collect additional field values from form submission
                     var additionalFieldsData = new Dictionary<string, AdditionalFieldValue>();
 
-                    foreach (var field in additionalFields)
+                    // Only process non-step fields
+                    foreach (var field in additionalFields.Where(f => f.FieldType != "step"))
                     {
                         var fieldName = field.FieldName;
                         var formKey = $"AdditionalFields[{fieldName}]";
@@ -107,7 +108,14 @@ namespace Medical.Controllers
 
             ViewBag.ActiveMenu = "FormBuilder";
             var reloadConfigForm = GetOrCreateConfigForm();
-            ViewBag.AdditionalFields = reloadConfigForm.AdditionalFields;
+            var allFields = reloadConfigForm.AdditionalFields?
+                .Where(f => !f.IsDeleted && f.IsActive)
+                .OrderBy(f => f.Step)
+                .ThenBy(f => f.DisplayOrder)
+                .ToList() ?? new List<AdditionalField>();
+            
+            ViewBag.AdditionalFields = allFields.Where(f => f.FieldType != "step").ToList();
+            ViewBag.CustomSteps = allFields.Where(f => f.FieldType == "step").ToList();
 
             return View(model);
         }
@@ -544,6 +552,19 @@ namespace Medical.Controllers
         public async Task<IActionResult> Index()
         {
             ViewBag.ActiveMenu = "ViewForms";
+            
+            // Get the field configuration to retrieve step and field names
+            var configForm = GetOrCreateConfigForm();
+            var allFields = configForm.AdditionalFields?
+                .Where(f => !f.IsDeleted && f.IsActive)
+                .OrderBy(f => f.Step)
+                .ThenBy(f => f.DisplayOrder)
+                .ToList() ?? new List<AdditionalField>();
+            
+            // Pass configuration fields and custom steps to view
+            ViewBag.ConfigFields = allFields.Where(f => f.FieldType != "step").ToList();
+            ViewBag.CustomSteps = allFields.Where(f => f.FieldType == "step").ToList();
+            
             var submissions = await _context.ViewPublicForm
                 .Where(f => f.FullName != null && f.IsDeleted != true) // Only actual submissions and not deleted
                 .OrderByDescending(f => f.CreatedAt)
@@ -578,6 +599,16 @@ namespace Medical.Controllers
             {
                 ViewBag.AdditionalFieldsData = new Dictionary<string, AdditionalFieldValue>();
             }
+
+            // Get custom steps configuration
+            var configForm = GetOrCreateConfigForm();
+            var allFields = configForm.AdditionalFields?
+                .Where(f => !f.IsDeleted && f.IsActive)
+                .OrderBy(f => f.Step)
+                .ThenBy(f => f.DisplayOrder)
+                .ToList() ?? new List<AdditionalField>();
+            
+            ViewBag.CustomSteps = allFields.Where(f => f.FieldType == "step").ToList();
 
             ViewBag.ActiveMenu = "ViewForms";
             return View(form);

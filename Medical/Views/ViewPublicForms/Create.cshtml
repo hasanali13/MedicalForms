@@ -2107,7 +2107,7 @@
         function renderFieldInput(field) {
             switch (field.FieldType) {
                 case 'textarea':
-                    return `<textarea class="form-control" rows="3" placeholder="${field.Placeholder || ''}" ${field.IsRequired ? 'required' : ''}></textarea>`;
+                    return `<textarea class="form-control" name="AdditionalFields[${field.FieldName}]" rows="3" placeholder="${field.Placeholder || ''}" ${field.IsRequired ? 'required' : ''}></textarea>`;
                 case 'select':
                     let optionsHtml = '<option value="">Select...</option>';
                     if (field.OptionsJson) {
@@ -2122,19 +2122,19 @@
                             console.error('Error parsing options:', e);
                         }
                     }
-                    return `<select class="form-control form-select" ${field.IsRequired ? 'required' : ''}>${optionsHtml}</select>`;
+                    return `<select class="form-control form-select" name="AdditionalFields[${field.FieldName}]" ${field.IsRequired ? 'required' : ''}>${optionsHtml}</select>`;
                 case 'checkbox':
-                    return `<input type="checkbox" class="form-check-input" ${field.IsRequired ? 'required' : ''}>`;
+                    return `<input type="checkbox" class="form-check-input" name="AdditionalFields[${field.FieldName}]" value="true" ${field.IsRequired ? 'required' : ''}><input type="hidden" name="AdditionalFields[${field.FieldName}]" value="false">`;
                 case 'number':
-                    return `<input type="number" class="form-control" placeholder="${field.Placeholder || ''}" ${field.IsRequired ? 'required' : ''}>`;
+                    return `<input type="number" class="form-control" name="AdditionalFields[${field.FieldName}]" placeholder="${field.Placeholder || ''}" ${field.IsRequired ? 'required' : ''}>`;
                 case 'date':
-                        return `<input type="date" class="form-control" ${field.IsRequired ? 'required' : ''}>`;
+                        return `<input type="date" class="form-control" name="AdditionalFields[${field.FieldName}]" ${field.IsRequired ? 'required' : ''}>`;
                 case 'email':
-                    return `<input type="email" class="form-control" placeholder="${field.Placeholder || ''}" ${field.IsRequired ? 'required' : ''}>`;
+                    return `<input type="email" class="form-control" name="AdditionalFields[${field.FieldName}]" placeholder="${field.Placeholder || ''}" ${field.IsRequired ? 'required' : ''}>`;
                 case 'tel':
-                    return `<input type="tel" class="form-control" placeholder="${field.Placeholder || ''}" ${field.IsRequired ? 'required' : ''}>`;
+                    return `<input type="tel" class="form-control" name="AdditionalFields[${field.FieldName}]" placeholder="${field.Placeholder || ''}" ${field.IsRequired ? 'required' : ''}>`;
                 default:
-                    return `<input type="text" class="form-control" placeholder="${field.Placeholder || ''}" ${field.IsRequired ? 'required' : ''}>`;
+                    return `<input type="text" class="form-control" name="AdditionalFields[${field.FieldName}]" placeholder="${field.Placeholder || ''}" ${field.IsRequired ? 'required' : ''}>`;
             }
         }
 

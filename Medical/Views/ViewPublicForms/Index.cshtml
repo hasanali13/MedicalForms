@@ -1,7 +1,10 @@
-﻿@model IEnumerable<Medical.Models.ViewPublicForm>
+@model IEnumerable<Medical.Models.ViewPublicForm>
 @{
     ViewData["Title"] = "Form Submissions";
     ViewBag.ActiveMenu = "ViewForms";
+    
+    var configFields = ViewBag.ConfigFields as List<Medical.Models.AdditionalField> ?? new List<Medical.Models.AdditionalField>();
+    var customSteps = ViewBag.CustomSteps as List<Medical.Models.AdditionalField> ?? new List<Medical.Models.AdditionalField>();
 }
 
 <style>
@@ -112,6 +115,36 @@
         padding: 4px 8px;
         border-radius: 4px;
         font-size: 12px;
+        margin-bottom: 8px;
+    }
+
+    .fields-list-container {
+        margin-top: 8px;
+    }
+
+    .field-item-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #E0F2FE;
+        color: #026AA2;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 11px;
+        margin-right: 8px;
+        margin-bottom: 6px;
+        font-weight: 500;
+    }
+
+    .step-group-badge {
+        display: inline-block;
+        background: #F3F9FF;
+        color: #1F6DFF;
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 10px;
+        font-weight: 600;
+        margin-right: 4px;
     }
 
     .action-buttons {
@@ -376,27 +409,110 @@
                                 </div>
                             </td>
                             <td>
-                                @if (!string.IsNullOrEmpty(item.AdditionalFieldsJson))
-                                {
-                                    try
+                                @{
+                                    if (!string.IsNullOrEmpty(item.AdditionalFieldsJson))
                                     {
-                                        var additionalData = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(item.AdditionalFieldsJson);
-                                        if (additionalData != null && additionalData.Count > 0)
+                                        try
                                         {
-                                            <span class="field-count">
-                                                <i class="fas fa-list me-1"></i>
-                                                @additionalData.Count fields
-                                            </span>
+                                            var additionalData = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(item.AdditionalFieldsJson);
+                                            if (additionalData != null && additionalData.Count > 0)
+                                            {
+                                                <div class="fields-list-container">
+                                                    <div style="margin-bottom: 8px;">
+                                                        <span class="field-count">
+                                                            <i class="fas fa-list me-1"></i>
+                                                            @additionalData.Count fields
+                                                        </span>
+                                                    </div>
+                                                    
+                                                    @{
+                                                        var fieldsByStep = new Dictionary<int, List<string>>();
+                                                        
+                                                        foreach (var field in additionalData)
+                                                        {
+                                                            var fieldName = field.Key;
+                                                            var configField = configFields.FirstOrDefault(f => f.FieldName == fieldName);
+                                                            var stepNum = configField?.Step ?? 1;
+                                                            
+                                                            var displayName = fieldName
+                                                                .Replace("additional_", "")
+                                                                .Replace("_", " ")
+                                                                .ToLower();
+                                                            
+                                                            if (displayName.Length > 0)
+                                                            {
+                                                                displayName = char.ToUpper(displayName[0]) + displayName.Substring(1);
+                                                            }
+                                                            
+                                                            if (!fieldsByStep.ContainsKey(stepNum))
+                                                            {
+                                                                fieldsByStep[stepNum] = new List<string>();
+                                                            }
+                                                            fieldsByStep[stepNum].Add(displayName);
+                                                        }
+                                                    }
+                                                    
+                                                    @foreach (var stepGroup in fieldsByStep.OrderBy(g => g.Key))
+                                                    {
+                                                        var stepNumber = stepGroup.Key;
+                                                        var stepName = "";
+                                                        var shouldDisplay = true;
+                                                        
+                                                        if (stepNumber <= 3)
+                                                        {
+                                                            var stepNames = new Dictionary<int, string> {
+                                                                { 1, "Step 1" },
+                                                                { 2, "Step 2" },
+                                                                { 3, "Step 3" }
+                                                            };
+                                                            stepName = stepNames.ContainsKey(stepNumber) ? stepNames[stepNumber] : "";
+                                                        }
+                                                        else
+                                                        {
+                                                            var customStep = customSteps.FirstOrDefault(s => s.Step == stepNumber);
+                                                            if (customStep != null)
+                                                            {
+                                                                stepName = $"Step {stepNumber}: {customStep.DisplayName}";
+                                                            }
+                                                            else
+                                                            {
+                                                                shouldDisplay = false;
+                                                            }
+                                                        }
+                                                        
+                                                        @if (shouldDisplay)
+                                                        {
+                                                            <div style="margin-bottom: 8px;">
+                                                                @if (!string.IsNullOrEmpty(stepName))
+                                                                {
+                                                                    <span class="step-group-badge">@stepName</span>
+                                                                }
+                                                                @foreach (var fieldName in stepGroup.Value)
+                                                                {
+                                                                    <span class="field-item-badge">
+                                                                        <i class="fas fa-tag"></i>
+                                                                        @fieldName
+                                                                    </span>
+                                                                }
+                                                            </div>
+                                                        }
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">None</span>
+                                            }
+                                        }
+                                        catch
+                                        {
+                                            <span class="text-muted">Invalid data</span>
                                         }
                                     }
-                                    catch
+                                    else
                                     {
-                                        <span class="text-muted">Invalid data</span>
+                                        <span class="text-muted">None</span>
                                     }
-                                }
-                                else
-                                {
-                                    <span class="text-muted">None</span>
                                 }
                             </td>
                             <td>
