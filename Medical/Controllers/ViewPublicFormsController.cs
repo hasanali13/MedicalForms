@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -171,11 +171,18 @@ namespace Medical.Controllers
                     foreach (var field in additionalFields.Where(f => f.FieldType != "step"))
                     {
                         var fieldName = field.FieldName;
-                        var formKey = fieldName; // Use field ID or field name as key
-
-                        if (Request.Form.ContainsKey(formKey))
+                        var formKey = fieldName;
+                        if (Request.Form.TryGetValue(formKey, out var values))
                         {
-                            var value = Request.Form[formKey].ToString();
+                            string value;
+                            if (string.Equals(field.FieldType, "checkbox", StringComparison.OrdinalIgnoreCase))
+                            {
+                                value = values.Any(v => string.Equals(v, "true", StringComparison.OrdinalIgnoreCase)) ? "true" : "false";
+                            }
+                            else
+                            {
+                                value = values.Count > 0 ? values[0] : string.Empty;
+                            }
                             additionalFieldsData[fieldName] = new AdditionalFieldValue
                             {
                                 FieldId = field.FieldId,
@@ -411,14 +418,22 @@ namespace Medical.Controllers
                 var existingFields = configForm.AdditionalFields ?? new List<AdditionalField>();
 
                 var fieldToDelete = existingFields.FirstOrDefault(f => f.FieldId == request.FieldId);
-                if (fieldToDelete == null)
-                {
-                    return Json(new { success = false, message = "Field not found" });
-                }
+                if (fieldToDelete == null) return Json(new { success = false, message = "Field not found" });
 
-                // Instead of removing, mark as deleted
-                fieldToDelete.IsDeleted = true;
-                fieldToDelete.UpdatedAt = DateTime.UtcNow;
+                // Permanently remove the field
+                existingFields = existingFields.Where(f => f.FieldId != request.FieldId).ToList();
+
+                // Recompute display order for remaining fields within each step
+                var fieldsByStep = existingFields.Where(f => f.FieldType != "step").GroupBy(f => f.Step);
+                foreach (var group in fieldsByStep)
+                {
+                    int order = 1;
+                    foreach (var field in group.OrderBy(f => f.DisplayOrder))
+                    {
+                        field.DisplayOrder = order++;
+                        field.UpdatedAt = DateTime.UtcNow;
+                    }
+                }
 
                 configForm.AdditionalFields = existingFields;
                 configForm.FormVersion++;
@@ -548,44 +563,30 @@ namespace Medical.Controllers
                 var configForm = GetOrCreateConfigForm();
                 var existingFields = configForm.AdditionalFields ?? new List<AdditionalField>();
 
-                // Find the step field
                 var stepField = existingFields.FirstOrDefault(f => f.FieldId == request.StepId && f.FieldType == "step");
-                if (stepField == null)
-                {
-                    return Json(new { success = false, message = "Step not found" });
-                }
+                if (stepField == null) return Json(new { success = false, message = "Step not found" });
 
-                int deletedStepNumber = stepField.Step;
+                var deletedStepNumber = stepField.Step;
 
-                // Mark step field as deleted
-                stepField.IsDeleted = true;
+                // Permanently remove the step and its fields
+                existingFields = existingFields
+                    .Where(f => !(f.FieldType == "step" && f.FieldId == request.StepId) && f.Step != deletedStepNumber)
+                    .ToList();
 
-                // Also mark all fields in this step as deleted
-                var stepFields = existingFields.Where(f => f.Step == deletedStepNumber).ToList();
-                foreach (var field in stepFields)
-                {
-                    field.IsDeleted = true;
-                    field.UpdatedAt = DateTime.UtcNow;
-                }
-
-                // Renumber remaining steps sequentially
+                // Renumber remaining steps sequentially starting from 4
                 var remainingSteps = existingFields
-                    .Where(f => f.FieldType == "step" && !f.IsDeleted)
+                    .Where(f => f.FieldType == "step")
                     .OrderBy(f => f.Step)
                     .ToList();
 
-                // Start numbering from 4 (after the 3 static steps)
                 for (int i = 0; i < remainingSteps.Count; i++)
                 {
-                    int newStepNumber = i + 4;
+                    var newStepNumber = i + 4;
                     var oldStepNumber = remainingSteps[i].Step;
                     remainingSteps[i].Step = newStepNumber;
 
                     // Update all fields in this step to the new step number
-                    var fieldsInStep = existingFields
-                        .Where(f => f.Step == oldStepNumber && f.FieldType != "step" && !f.IsDeleted)
-                        .ToList();
-                    foreach (var field in fieldsInStep)
+                    foreach (var field in existingFields.Where(f => f.Step == oldStepNumber && f.FieldType != "step"))
                     {
                         field.Step = newStepNumber;
                         field.UpdatedAt = DateTime.UtcNow;
@@ -600,6 +601,59 @@ namespace Medical.Controllers
                 await _context.SaveChangesAsync();
 
                 return Json(new { success = true, message = "Step deleted successfully!" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error: {ex.Message}" });
+            }
+        }
+
+        // AJAX: Update custom step
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateCustomStep([FromBody] UpdateStepRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.StepName))
+                    return Json(new { success = false, message = "Step name is required" });
+
+                var configForm = GetOrCreateConfigForm();
+                var existingFields = configForm.AdditionalFields ?? new List<AdditionalField>();
+
+                var stepField = existingFields.FirstOrDefault(f => f.FieldId == request.StepId && f.FieldType == "step");
+                if (stepField == null) return Json(new { success = false, message = "Step not found" });
+
+                // Update properties
+                stepField.DisplayName = request.StepName.Trim();
+                stepField.Placeholder = string.IsNullOrWhiteSpace(request.StepDescription) ? null : request.StepDescription.Trim();
+                stepField.OptionsJson = request.StepIcon; // icon
+
+                // Handle optional reordering
+                if (request.StepOrder.HasValue && request.StepOrder.Value >= 4)
+                {
+                    var desiredOrder = request.StepOrder.Value;
+                    stepField.Step = desiredOrder;
+
+                    // Reorder all steps sequentially based on their Step value
+                    var orderedSteps = existingFields.Where(f => f.FieldType == "step").OrderBy(f => f.Step).ToList();
+                    for (int i = 0; i < orderedSteps.Count; i++)
+                    {
+                        orderedSteps[i].Step = i + 4;
+                    }
+
+                    // Normalize field step numbers to match updated step numbers
+                    var stepMap = orderedSteps.ToDictionary(s => s.FieldId, s => s.Step);
+                }
+
+                configForm.AdditionalFields = existingFields;
+                configForm.FormVersion++;
+                configForm.CreatedAt = DateTime.UtcNow;
+
+                _context.ViewPublicForm.Update(configForm);
+                await _context.SaveChangesAsync();
+
+                return Json(new { success = true, message = "Step updated successfully!" });
             }
             catch (Exception ex)
             {
@@ -881,6 +935,15 @@ namespace Medical.Controllers
         public string? StepDescription { get; set; }
         public int StepOrder { get; set; } = 4; // Default after step 3
         public string? StepIcon { get; set; } = "📋";
+    }
+
+    public class UpdateStepRequest
+    {
+        public Guid StepId { get; set; }
+        public string StepName { get; set; } = string.Empty;
+        public string? StepDescription { get; set; }
+        public int? StepOrder { get; set; } // optional reorder
+        public string? StepIcon { get; set; }
     }
 
     public class DeleteStepRequest

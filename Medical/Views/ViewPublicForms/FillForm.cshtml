@@ -637,6 +637,7 @@
             input = document.createElement('input');
             input.type = 'checkbox';
             input.className = 'form-check-input';
+            input.value = 'true';
 
             const checkLabel = document.createElement('label');
             checkLabel.className = 'form-check-label';
@@ -647,6 +648,11 @@
 
             group.innerHTML = '';
             group.appendChild(checkDiv);
+            const hiddenFalse = document.createElement('input');
+            hiddenFalse.type = 'hidden';
+            hiddenFalse.value = 'false';
+            // name assignment happens below uniformly
+            group.appendChild(hiddenFalse);
             return group;
         } else if (fieldType === 'date') {
             input = document.createElement('input');
@@ -674,7 +680,12 @@
             input.placeholder = placeholder;
         }
 
-        input.name = fieldId;
+        input.name = type === 'static' ? fieldId : (field.FieldName || fieldId);
+        // ensure hidden false aligns to the same name for checkboxes
+        if (fieldType === 'checkbox') {
+            const hidden = group.querySelector('input[type="hidden"]');
+            if (hidden) hidden.name = input.name;
+        }
         if (isRequired) input.required = true;
 
         if (formData[fieldId] !== undefined) {

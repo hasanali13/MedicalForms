@@ -1461,7 +1461,9 @@
         </div>
         <div class="modal-footer">
             <button type="button" class="btn-secondary" onclick="stepModalCloseHandler()">Cancel</button>
-            <button type="button" class="btn-primary" onclick="submitAddStepForm()">Add Step</button>
+            <input type="hidden" id="editingStepId" />
+            <button type="button" class="btn-primary" id="addStepSubmitBtn" onclick="submitAddStepForm()">Add Step</button>
+            <button type="button" class="btn-primary" id="updateStepSubmitBtn" style="display:none;" onclick="submitUpdateStepForm()">Update Step</button>
         </div>
     </div>
 </div>
@@ -1516,6 +1518,10 @@
             isStepModalOpen = true;
             document.body.style.overflow = 'hidden';
             document.getElementById('stepNameInput').focus();
+            document.getElementById('addStepSubmitBtn').style.display = '';
+            document.getElementById('updateStepSubmitBtn').style.display = 'none';
+            document.getElementById('editingStepId').value = '';
+            document.querySelector('#addStepModal .modal-title').textContent = 'Add New Step';
         }
 
         function stepModalCloseHandler() {
@@ -1531,6 +1537,27 @@
             document.getElementById('stepDescriptionInput').value = '';
             document.getElementById('stepIconSelect').value = '📋';
             document.getElementById('stepPositionSelect').value = '3';
+            document.getElementById('editingStepId').value = '';
+        }
+        
+        function editStepModalOpenHandler(stepId) {
+            const step = customSteps.find(s => s.FieldId === stepId);
+            if (!step) {
+                showToast('Step not found', 'error');
+                return;
+            }
+            const modal = document.getElementById('addStepModal');
+            modal.classList.add('show');
+            isStepModalOpen = true;
+            document.body.style.overflow = 'hidden';
+            document.querySelector('#addStepModal .modal-title').textContent = 'Edit Step';
+            document.getElementById('stepNameInput').value = step.DisplayName || '';
+            document.getElementById('stepDescriptionInput').value = step.Placeholder || '';
+            document.getElementById('stepIconSelect').value = step.OptionsJson || '📋';
+            document.getElementById('stepPositionSelect').value = String((step.Step || 4) - 1); // position select is "Insert After Step"
+            document.getElementById('editingStepId').value = step.FieldId;
+            document.getElementById('addStepSubmitBtn').style.display = 'none';
+            document.getElementById('updateStepSubmitBtn').style.display = '';
         }
 
         // =================================
@@ -1635,6 +1662,48 @@
                 }
             } catch (error) {
                 showToast('Error adding step: ' + error.message, 'error');
+            }
+        }
+        
+        async function submitUpdateStepForm() {
+            const stepId = document.getElementById('editingStepId').value;
+            if (!stepId) {
+                showToast('No step selected', 'error');
+                return;
+            }
+            const stepName = document.getElementById('stepNameInput').value.trim();
+            if (!stepName) {
+                showToast('Step Name is required', 'error');
+                document.getElementById('stepNameInput').focus();
+                return;
+            }
+            const stepData = {
+                StepId: stepId,
+                StepName: stepName,
+                StepDescription: document.getElementById('stepDescriptionInput').value.trim(),
+                StepIcon: document.getElementById('stepIconSelect').value,
+                StepOrder: parseInt(document.getElementById('stepPositionSelect').value) + 1
+            };
+            showToast('Updating step...', 'info');
+            try {
+                const response = await fetch('@Url.Action("UpdateCustomStep", "ViewPublicForms")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': getToken()
+                    },
+                    body: JSON.stringify(stepData)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    stepModalCloseHandler();
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(result.message, 'error');
+                }
+            } catch (error) {
+                showToast('Error updating step: ' + error.message, 'error');
             }
         }
 
@@ -2037,7 +2106,11 @@
                     <div class="step-pill">
                         <div>
                             <div class="step-title">Step ${stepNumber}</div>
-                            <div class="step-subtitle">${step.DisplayName}</div>
+                            <div class="step-subtitle d-flex align-items-center gap-2">
+                                <span>${step.DisplayName}</span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="editStepModalOpenHandler('${step.FieldId}')">Edit</button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteStepHandler('${step.FieldId}')">Delete</button>
+                            </div>
                         </div>
                         <div class="step-count" id="step${stepNumber}Count">${fieldCount} fields</div>
                     </div>
@@ -2054,7 +2127,12 @@
                 const fieldsContainerId = `step${stepNumber}AdditionalFields`;
 
                 stepForm.innerHTML = `
-                    <h4><span class="step-icon">${step.OptionsJson || '📋'}</span> ${step.DisplayName}</h4>
+                    <h4 class="d-flex align-items-center gap-2">
+                        <span class="step-icon">${step.OptionsJson || '📋'}</span>
+                        <span>${step.DisplayName}</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="editStepModalOpenHandler('${step.FieldId}')">Edit Step</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteStepHandler('${step.FieldId}')">Delete Step</button>
+                    </h4>
                     <p class="text-muted">${step.Placeholder || ''}</p>
                     <hr />
 
