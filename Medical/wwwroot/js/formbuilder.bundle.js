@@ -255,18 +255,30 @@ function initFormBuilderPage() {
 
   customSteps = customStepsData || [];
 
+  const blank = isBlankCanvasMode();
+  setBlankCanvasVisibility(blank);
+
   if (customSteps.length > 0) {
     renderCustomSteps();
   }
 
-  switchStep(1);
+  // Restore last active step (if possible)
+  const restoredStep = restoreActiveStep();
 
-  try { updateCounts(); } catch (e) { }
-  try { updateAllergyVisibility(); } catch (e) { }
+  if (blank) {
+    // Do not auto-show built-in Step 1; show empty state unless a custom step exists
+    updateBlankCanvasEmptyState();
+  } else {
+    const targetStep = restoredStep || 1;
+    switchStep(targetStep);
 
-  try { applyConditionalLogic(); } catch (e) { console.error('Error applying conditional logic:', e); }
+    try { updateCounts(); } catch (e) { }
+    try { updateAllergyVisibility(); } catch (e) { }
 
-  setupFieldClickHandlers();
+    try { applyConditionalLogic(); } catch (e) { console.error('Error applying conditional logic:', e); }
+
+    setupFieldClickHandlers();
+  }
 }
 
 window.initFormBuilderPage = initFormBuilderPage;
@@ -1165,6 +1177,9 @@ async function submitAddFieldForm() {
       showToast(result.message, 'success');
       modalCloseHandler();
 
+      // Keep the user on the same step after reload
+      rememberActiveStep();
+
       setTimeout(() => {
         location.reload();
       }, 1500);
@@ -1208,6 +1223,9 @@ async function submitAddStepForm() {
     if (result.success) {
       showToast(result.message, 'success');
       stepModalCloseHandler();
+
+      // Keep the user on the same step after reload
+      rememberActiveStep();
 
       setTimeout(() => {
         location.reload();
@@ -1811,3 +1829,136 @@ window.switchStep = function(step) {
         } catch (e) { /* ignore */ }
     });
 };
+
+// =================================
+// BLANK CANVAS MODE (NEW)
+// =================================
+function isBlankCanvasMode() {
+  try {
+    const qs = new URLSearchParams(window.location.search);
+    if (qs.has('blank')) {
+      const v = (qs.get('blank') || '').toLowerCase();
+      return v === '' || v === '1' || v === 'true' || v === 'yes';
+    }
+    const ls = localStorage.getItem('formbuilder.blankCanvas');
+    if (!ls) return false;
+    const v = String(ls).toLowerCase();
+    return v === '1' || v === 'true' || v === 'yes';
+  } catch {
+    return false;
+  }
+}
+
+function setBlankCanvasVisibility(enabled) {
+  try {
+    document.documentElement.classList.toggle('fb-blank-canvas', !!enabled);
+  } catch { }
+}
+
+function ensureBlankCanvasEmptyState() {
+  const panel = document.querySelector('.form-panel');
+  if (!panel) return;
+
+  let empty = panel.querySelector('#fbBlankCanvasEmptyState');
+  if (!empty) {
+    empty = document.createElement('div');
+    empty.id = 'fbBlankCanvasEmptyState';
+    empty.className = 'fb-empty-state';
+    empty.innerHTML = `
+      <h4 class="mb-2">No steps yet</h4>
+      <p class="text-muted mb-0">Click “Add Step” to start building your form.</p>
+    `;
+    panel.insertAdjacentElement('afterbegin', empty);
+  }
+}
+
+function updateBlankCanvasEmptyState() {
+  const enabled = isBlankCanvasMode();
+  if (!enabled) return;
+
+  setBlankCanvasVisibility(true);
+
+  const panel = document.querySelector('.form-panel');
+  if (!panel) return;
+
+  const hasCustom = Array.isArray(customSteps) && customSteps.length > 0;
+  ensureBlankCanvasEmptyState();
+
+  const empty = panel.querySelector('#fbBlankCanvasEmptyState');
+  if (empty) empty.style.display = hasCustom ? 'none' : '';
+
+  // If we have a custom step, activate the first one; otherwise keep all steps hidden
+  if (hasCustom) {
+    const first = customSteps.slice().sort((a, b) => (a.Step || 0) - (b.Step || 0))[0];
+    if (first && typeof switchStep === 'function') {
+      switchStep(first.Step);
+    }
+  } else {
+    document.querySelectorAll('.form-step').forEach(s => s.classList.add('hidden'));
+    document.querySelectorAll('.step-item').forEach(s => s.classList.remove('active'));
+    try {
+      const fieldsList = document.getElementById('fieldsList');
+      if (fieldsList) fieldsList.innerHTML = '';
+      const stepNameEl = document.getElementById('currentStepName');
+      if (stepNameEl) stepNameEl.textContent = '';
+    } catch { }
+  }
+}
+
+// Patch switchStep only for blank mode: do nothing for steps 1-3, and keep empty state in sync
+(function () {
+  const _orig = window.switchStep;
+  window.switchStep = function (step) {
+    if (isBlankCanvasMode() && step <= 3) {
+      // ignore switching to static steps in blank mode
+      updateBlankCanvasEmptyState();
+      return;
+    }
+    if (typeof _orig === 'function') _orig(step);
+    if (isBlankCanvasMode()) {
+      try { updateBlankCanvasEmptyState(); } catch { }
+    }
+  };
+})();
+
+// =================================
+// ACTIVE STEP PERSISTENCE (UI only)
+// =================================
+function getActiveStepFromUI() {
+  try {
+    const tab = document.querySelector('.step-item.active[data-step]');
+    if (tab) {
+      const n = parseInt(tab.getAttribute('data-step') || '', 10);
+      if (!Number.isNaN(n)) return n;
+    }
+  } catch { }
+
+  try {
+    const stepEl = document.querySelector('.form-step:not(.hidden)');
+    if (stepEl && stepEl.id && stepEl.id.startsWith('step')) {
+      const n = parseInt(stepEl.id.slice(4), 10);
+      if (!Number.isNaN(n)) return n;
+    }
+  } catch { }
+
+  return null;
+}
+
+function rememberActiveStep() {
+  try {
+    const s = getActiveStepFromUI();
+    if (s) sessionStorage.setItem('formbuilder.activeStep', String(s));
+  } catch { }
+}
+
+function restoreActiveStep() {
+  try {
+    const raw = sessionStorage.getItem('formbuilder.activeStep');
+    if (!raw) return null;
+    const n = parseInt(raw, 10);
+    if (Number.isNaN(n)) return null;
+    return n;
+  } catch {
+    return null;
+  }
+}

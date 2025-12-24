@@ -385,6 +385,14 @@
             max-width: 90vw;
         }
     }
+
+    .fillform-group-header {
+        margin-top: 18px;
+        margin-bottom: 10px;
+        font-weight: 700;
+        color: #2d3748;
+        font-size: 16px;
+    }
 </style>
 
 <form asp-action="FillForm" method="post" id="fillForm">
@@ -838,4 +846,135 @@
         updateButtons();
         applyConditional();
     });
+</script>
+
+<script>
+    // =========================
+    // Form Builder grouping -> FillForm rendering (UI only)
+    // Reads localStorage formbuilder.grouping.v1 and renders group headers in FillForm
+    // =========================
+    const GROUPING_STORAGE_KEY = 'formbuilder.grouping.v1';
+
+    function safeJsonParse(text, fallback) {
+        try { return JSON.parse(text); } catch { return fallback; }
+    }
+
+    function getGroupingStore() {
+        try {
+            return safeJsonParse(localStorage.getItem(GROUPING_STORAGE_KEY) || '', { steps: {} });
+        } catch {
+            return { steps: {} };
+        }
+    }
+
+    function getGroupsForStep(stepNum) {
+        const store = getGroupingStore();
+        const st = (store.steps && store.steps[String(stepNum)]) ? store.steps[String(stepNum)] : null;
+        const groups = st && Array.isArray(st.groups) ? st.groups : [];
+
+        // Only groups with at least one field should render in FillForm
+        return groups
+            .map(g => ({
+                groupId: String(g.groupId || ''),
+                name: (g.name || '').trim(),
+                fieldIds: Array.isArray(g.fieldIds) ? g.fieldIds.map(x => String(x)) : []
+            }))
+            .filter(g => g.groupId && g.fieldIds.length > 0);
+    }
+
+    function createGroupHeader(titleText) {
+        const h = document.createElement('div');
+        h.className = 'fillform-group-header';
+        h.textContent = titleText;
+        return h;
+    }
+
+    // 1) Replace renderForm() with grouped rendering (dynamic fields only)
+    const __origRenderForm = renderForm;
+    renderForm = function () {
+        const container = document.getElementById('formContent');
+        container.innerHTML = '';
+
+        const allStepNums = [1, 2, 3, ...customSteps.map(s => s.Step)];
+        const uniqueSteps = [...new Set(allStepNums)].sort((a, b) => a - b);
+
+        uniqueSteps.forEach(stepNum => {
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'form-step';
+            if (stepNum === currentStep) stepDiv.classList.add('active');
+            stepDiv.id = `step-${stepNum}`;
+
+            // Step title and description
+            let title = '', desc = '', icon = '';
+
+            if (stepNum === 1) {
+                title = 'Personal Information';
+                desc = 'Please provide your basic information.';
+            } else if (stepNum === 2) {
+                title = 'Health Details';
+                desc = 'Tell us about your health.';
+            } else if (stepNum === 3) {
+                title = 'Emergency Contact';
+                desc = 'Provide emergency contact information.';
+            } else {
+                const custom = customSteps.find(s => s.Step === stepNum);
+                if (custom) {
+                    icon = custom.OptionsJson || '📋';
+                    title = custom.DisplayName;
+                    desc = custom.Placeholder || '';
+                }
+            }
+
+            const titleEl = document.createElement('div');
+            titleEl.className = 'step-title';
+            if (icon) titleEl.innerHTML = `<span class="step-icon">${icon}</span>${escapeHtml(title)}`;
+            else titleEl.textContent = title;
+            stepDiv.appendChild(titleEl);
+
+            if (desc) {
+                const descEl = document.createElement('p');
+                descEl.className = 'step-description';
+                descEl.textContent = desc;
+                stepDiv.appendChild(descEl);
+            }
+
+            // Static fields stay as-is (ungrouped)
+            const staticFields = staticFieldsMap[stepNum] || [];
+            staticFields.forEach(field => {
+                stepDiv.appendChild(renderField(field.key, field, 'static'));
+            });
+
+            // Dynamic fields grouped by stored group mapping
+            const allDynamicForStep = allAdditionalFields.filter(f => f.Step === stepNum);
+            const dynamicById = new Map(allDynamicForStep.map(f => [String(f.FieldId), f]));
+
+            const groups = getGroupsForStep(stepNum);
+            const used = new Set();
+
+            groups.forEach(g => {
+                // Group name optional: if empty, do NOT add header (but still render fields)
+                if (g.name) {
+                    stepDiv.appendChild(createGroupHeader(g.name));
+                }
+
+                g.fieldIds.forEach(fid => {
+                    const field = dynamicById.get(String(fid));
+                    if (!field) return;
+                    used.add(String(fid));
+                    stepDiv.appendChild(renderField(field.FieldId, field, 'dynamic'));
+                });
+            });
+
+            // Ungrouped dynamic fields (not mapped) render after groups
+            allDynamicForStep.forEach(field => {
+                if (!used.has(String(field.FieldId))) {
+                    stepDiv.appendChild(renderField(field.FieldId, field, 'dynamic'));
+                }
+            });
+
+            container.appendChild(stepDiv);
+        });
+
+        setupFormListeners();
+    };
 </script>
