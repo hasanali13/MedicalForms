@@ -13,11 +13,17 @@ This guide explains how to deploy the MedicalForms application using Portainer f
 1. Login to your **Portainer** instance.
 2. Go to **Stacks** > **Add stack**.
 3. Name the stack: `medical-forms`.
-4. Select **Upload** (if uploading `docker-compose.yml` directly) or **Repository** (if connecting to Git).
-    - *Method A (Manual Editor)*: Copy the contents of `docker-compose.yml` and paste it into the Web Editor.
+4. Select **Repository** (Recommended).
+    - **Repository URL**: `https://github.com/hasanali13/MedicalForms.git`
+    - **Repository Reference**: `refs/heads/main` (or your branch name)
+    - **Compose path**: `docker-compose.yml`
 5. **Environment Variables**:
-    - You can change the `MSSQL_SA_PASSWORD` in the Compose file if needed. Update the connection string in the `app` service to match!
+    - Add `ASPNETCORE_ENVIRONMENT` = `Production`
+    - Add `MSSQL_SA_PASSWORD` = `YourStrong@Password123`
+    - *Note*: The `ConnectionStrings__MedicalContext` is already defined in the compose file to use the db service, but you can override it here if needed.
 6. Click **Deploy the stack**.
+
+Portainer will clone your repository, build the Docker image (since the compose file specifies a build context), and start the application.
 
 Wait for the containers (`medical_forms_app` and `medical_forms_db`) to start. You can check the logs of `medical_forms_app` to ensure it says "Application started...".
 
