@@ -2,7 +2,7 @@
 @{
     ViewData["Title"] = "Fill Form";
     var additionalFields = ViewBag.AdditionalFields as List<Medical.Models.AdditionalField> ?? new List<Medical.Models.AdditionalField>();
-    var customSteps = ViewBag.CustomSteps as List<Medical.Models.AdditionalField> ?? new List<Medical.Models.AdditionalField>();
+    var formSteps = ViewBag.FormSteps as List<Medical.Models.FormStep> ?? new List<Medical.Models.FormStep>();
 }
 
 <style>
@@ -11,38 +11,46 @@
     }
 
     body {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        background: linear-gradient(135deg, #f5f7fa 0%, #e8f5e9 100%);
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
         padding: 20px;
         min-height: 100vh;
     }
 
     .container-fillform {
-        max-width: 700px;
+        max-width: 1100px;
         margin: 40px auto;
         background: white;
-        border-radius: 12px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
         overflow: hidden;
     }
 
     .form-header {
         padding: 40px;
         text-align: center;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #00796B 0%, #00695C 100%);
         color: white;
+        position: relative;
     }
 
     .form-header h1 {
-        margin: 0 0 10px 0;
+        margin: 0 0 8px 0;
         font-size: 32px;
         font-weight: 700;
     }
 
     .form-header p {
         margin: 0;
-        opacity: 0.9;
-        font-size: 16px;
+        opacity: 0.95;
+        font-size: 15px;
+    }
+
+    .form-header .powered-by {
+        margin-top: 12px;
+        font-size: 13px;
+        opacity: 0.85;
+        font-weight: 500;
     }
 
     .steps-indicator {
@@ -57,9 +65,9 @@
     .steps-indicator::before {
         content: '';
         position: absolute;
-        top: 20px;
-        left: 50px;
-        right: 50px;
+        top: 50px;
+        left: 60px;
+        right: 60px;
         height: 2px;
         background: #e0e0e0;
         z-index: 0;
@@ -70,11 +78,12 @@
         text-align: center;
         position: relative;
         z-index: 1;
+        min-width: 100px;
     }
 
     .step-number {
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
         border-radius: 50%;
         background: white;
         border: 2px solid #e0e0e0;
@@ -88,15 +97,15 @@
     }
 
     .step-number.active {
-        background: #667eea;
-        border-color: #667eea;
+        background: #00796B;
+        border-color: #00796B;
         color: white;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 4px 12px rgba(0, 121, 107, 0.4);
     }
 
     .step-number.completed {
-        background: #48bb78;
-        border-color: #48bb78;
+        background: #4CAF50;
+        border-color: #4CAF50;
         color: white;
     }
 
@@ -108,7 +117,7 @@
     }
 
     .step-label.active {
-        color: #667eea;
+        color: #00796B;
         font-weight: 600;
     }
 
@@ -132,13 +141,15 @@
     }
     
     .step-title {
-        font-size: 24px;
+        font-size: 26px;
         font-weight: 700;
-        color: #2d3748;
+        color: #00695C;
         margin-bottom: 8px;
         display: flex;
         align-items: center;
         gap: 10px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid #E8F5E9;
     }
 
     .step-icon {
@@ -152,8 +163,42 @@
         line-height: 1.6;
     }
 
-    .form-group {
+    /* ============================================
+       TWO-COLUMN LAYOUT - DYNAMIC
+       ============================================ */
+    .fields-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
         margin-bottom: 24px;
+    }
+
+    .field-column {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 0;
+    }
+
+    /* Group containers */
+    .fillform-group-container {
+        background: #F9FAFB;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .fillform-group-header {
+        margin: 0 0 16px 0;
+        font-weight: 700;
+        color: #00695C;
+        font-size: 17px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #B2DFDB;
     }
 
     .form-label {
@@ -165,7 +210,7 @@
     }
 
     .required {
-        color: #f56565;
+        color: #E53E3E;
         margin-left: 4px;
     }
 
@@ -183,8 +228,8 @@
 
     .form-control:focus {
         outline: none;
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        border-color: #00796B;
+        box-shadow: 0 0 0 3px rgba(0, 121, 107, 0.1);
         background: white;
     }
 
@@ -203,12 +248,12 @@
     }
 
     .form-control.error {
-        border-color: #f56565;
-        background-color: #fff5f5;
+        border-color: #E53E3E;
+        background-color: #FFF5F5;
     }
 
     .form-control.error:focus {
-        box-shadow: 0 0 0 3px rgba(245, 101, 101, 0.1);
+        box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.1);
     }
 
     .form-group.hidden {
@@ -228,7 +273,7 @@
         height: 20px;
         cursor: pointer;
         flex-shrink: 0;
-        accent-color: #667eea;
+        accent-color: #00796B;
     }
 
     .form-check-label {
@@ -238,19 +283,51 @@
         margin-bottom: 0;
     }
 
+    /* Radio Group Styling */
+    .radio-group {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 8px;
+    }
+
+    .radio-group .form-check {
+        padding: 10px 14px;
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+
+    .radio-group .form-check:hover {
+        background: #F9FAFB;
+        border-color: #00796B;
+    }
+
+    .radio-group .form-check-input:checked + .form-check-label {
+        color: #00796B;
+        font-weight: 600;
+    }
+
+    .radio-group .form-check:has(input:checked) {
+        background: linear-gradient(135deg, rgba(0, 121, 107, 0.05) 0%, rgba(0, 105, 92, 0.05) 100%);
+        border-color: #00796B;
+        box-shadow: 0 0 0 3px rgba(0, 121, 107, 0.1);
+    }
+
     .form-actions {
         display: flex;
         justify-content: space-between;
         gap: 12px;
         margin-top: 40px;
         padding-top: 24px;
-        border-top: 1px solid #e2e8f0;
+        border-top: 2px solid #E8F5E9;
     }
 
     .btn {
-        padding: 12px 28px;
+        padding: 14px 32px;
         border-radius: 8px;
-        font-size: 14px;
+        font-size: 15px;
         font-weight: 600;
         border: none;
         cursor: pointer;
@@ -266,7 +343,7 @@
 
     .btn-secondary {
         background: white;
-        border: 1px solid #cbd5e0;
+        border: 2px solid #cbd5e0;
         color: #2d3748;
         margin-right: auto;
     }
@@ -277,23 +354,23 @@
     }
 
     .btn-primary {
-        background: #667eea;
+        background: #00796B;
         color: white;
     }
 
     .btn-primary:hover:not(:disabled) {
-        background: #5568d3;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        background: #00695C;
+        box-shadow: 0 4px 12px rgba(0, 121, 107, 0.4);
     }
 
     .btn-success {
-        background: #48bb78;
+        background: #4CAF50;
         color: white;
     }
 
     .btn-success:hover:not(:disabled) {
-        background: #38a169;
-        box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+        background: #45A049;
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
     }
 
     .progress-text {
@@ -311,7 +388,7 @@
     }
 
     .toast {
-        background: #48bb78;
+        background: #4CAF50;
         color: white;
         padding: 16px 20px;
         border-radius: 8px;
@@ -325,11 +402,11 @@
     }
 
     .toast.error {
-        background: #f56565;
+        background: #E53E3E;
     }
 
     .toast.info {
-        background: #4299e1;
+        background: #3182CE;
     }
 
     @@keyframes slideIn {
@@ -337,6 +414,21 @@
         to { transform: translateX(0); opacity: 1; }
     }
 
+    /* Footer branding */
+    .form-footer {
+        padding: 20px 40px;
+        background: #F9FAFB;
+        border-top: 1px solid #E5E7EB;
+        text-align: center;
+        font-size: 13px;
+        color: #6B7280;
+    }
+
+    .form-footer strong {
+        color: #00695C;
+    }
+
+    /* Responsive - Mobile */
     @@media (max-width: 768px) {
         .container-fillform {
             margin: 20px auto;
@@ -368,6 +460,12 @@
             font-size: 20px;
         }
 
+        /* Single column on mobile */
+        .fields-row {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
         .form-actions {
             flex-direction: column;
         }
@@ -386,12 +484,15 @@
         }
     }
 
-    .fillform-group-header {
-        margin-top: 18px;
-        margin-bottom: 10px;
-        font-weight: 700;
-        color: #2d3748;
-        font-size: 16px;
+    /* Tablet - Keep two columns if space allows */
+    @@media (min-width: 769px) and (max-width: 1024px) {
+        .container-fillform {
+            max-width: 900px;
+        }
+
+        .fields-row {
+            gap: 20px;
+        }
     }
 </style>
 
@@ -402,6 +503,7 @@
         <div class="form-header">
             <h1>Medical Form</h1>
             <p>Please complete all required fields</p>
+            <div class="powered-by">Powered by Origin Software's</div>
         </div>
 
         <!-- Step Indicator -->
@@ -411,7 +513,7 @@
 
         <!-- Form Content -->
         <div class="form-content" id="formContent">
-            <!-- Steps rendered dynamically -->
+            <!-- Steps rendered dynamically with two-column layout -->
         </div>
 
         <!-- Form Actions -->
@@ -432,56 +534,33 @@
                 Step <span id="currentStep">1</span> of <span id="totalSteps">1</span>
             </div>
         </div>
+
+        <!-- Footer Branding -->
+        <div class="form-footer">
+            © @DateTime.Now.Year <strong>Origin Software's</strong>. All Rights Reserved.
+        </div>
     </div>
 </form>
 
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
-    // Data from server
+    // Data from server - ALL DYNAMIC (no hardcoded fields)
     const allAdditionalFields = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
         additionalFields.Select(f => new { f.FieldId, f.DisplayName, f.FieldType, f.Step, f.IsRequired, f.IsConditional, f.Placeholder, f.ConditionalLogicJson, f.OptionsJson, f.FieldName, f.InputType })
     ));
 
-    const allCustomSteps = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-        customSteps.Select(s => new { s.FieldId, s.DisplayName, s.Step, s.Placeholder, s.OptionsJson })
+    const allFormSteps = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        formSteps.Select(s => new { s.Id, s.Name, s.Order, s.IsActive })
     ));
-
-    // Static field configurations
-    const staticFieldsMap = {
-        1: [
-            { key: 'FullName', label: 'Full Name', type: 'text', required: false },
-            { key: 'Age', label: 'Age', type: 'number', required: false },
-            { key: 'Gender', label: 'Gender', type: 'select', options: ['Male', 'Female', 'Other', 'Prefer not to say'], required: false },
-            { key: 'DateOfBirth', label: 'Date of Birth', type: 'date', required: false }
-        ],
-        2: [
-            { key: 'HasAllergies', label: 'Has Allergies', type: 'select', options: ['', 'Yes', 'No'], required: false },
-            { key: 'AllergyDescription', label: 'Allergy Description', type: 'textarea', required: false },
-            { key: 'CurrentMedication', label: 'Current Medication', type: 'textarea', required: false },
-            { key: 'HeightCm', label: 'Height (cm)', type: 'number', required: false },
-            { key: 'WeightKg', label: 'Weight (kg)', type: 'number', required: false }
-        ],
-        3: [
-            { key: 'ContactName', label: 'Contact Name', type: 'text', required: false },
-            { key: 'Relationship', label: 'Relationship', type: 'text', required: false },
-            { key: 'PhoneNumber', label: 'Phone Number', type: 'tel', required: false },
-            { key: 'HasAlternativeContact', label: 'Has Alternative Contact', type: 'checkbox', required: false },
-            { key: 'AltContactName', label: 'Alt Contact Name', type: 'text', required: false },
-            { key: 'AltPhoneNumber', label: 'Alt Phone Number', type: 'tel', required: false }
-        ]
-    };
 
     // State
     let currentStep = 1;
-    let customSteps = allCustomSteps || [];
     let formData = {};
 
     // Get last step number
     function getLastStep() {
-        const customStepNums = customSteps.map(s => s.Step);
-        const maxCustom = customStepNums.length > 0 ? Math.max(...customStepNums) : 0;
-        return Math.max(3, maxCustom);
+        return allFormSteps.length > 0 ? Math.max(...allFormSteps.map(s => s.Order)) : 1;
     }
 
     // Render step indicator
@@ -489,21 +568,11 @@
         const container = document.getElementById('stepsIndicator');
         container.innerHTML = '';
 
-        const allSteps = [
-            { num: 1, name: 'Personal Info' },
-            { num: 2, name: 'Health Details' },
-            { num: 3, name: 'Emergency Contact' }
-        ];
+        const activeSteps = allFormSteps.filter(s => s.IsActive !== false).sort((a, b) => a.Order - b.Order);
 
-        customSteps.forEach(s => {
-            allSteps.push({ num: s.Step, name: s.DisplayName });
-        });
-
-        allSteps.sort((a, b) => a.num - b.num);
-
-        allSteps.forEach(step => {
-            const isActive = step.num === currentStep;
-            const isCompleted = step.num < currentStep;
+        activeSteps.forEach(step => {
+            const isActive = step.Order === currentStep;
+            const isCompleted = step.Order < currentStep;
 
             const badge = document.createElement('div');
             badge.className = 'step-badge';
@@ -512,12 +581,12 @@
             number.className = 'step-number';
             if (isActive) number.classList.add('active');
             if (isCompleted) number.classList.add('completed');
-            number.textContent = isCompleted ? '✓' : step.num;
+            number.textContent = isCompleted ? '✓' : step.Order;
 
             const label = document.createElement('div');
             label.className = 'step-label';
             if (isActive) label.classList.add('active');
-            label.textContent = step.name;
+            label.textContent = step.Name;
 
             badge.appendChild(number);
             badge.appendChild(label);
@@ -528,86 +597,134 @@
         document.getElementById('totalSteps').textContent = getLastStep();
     }
 
-    // Render form steps
+    // Render form steps - FULLY DYNAMIC WITH TWO-COLUMN LAYOUT
     function renderForm() {
         const container = document.getElementById('formContent');
         container.innerHTML = '';
 
-        const allStepNums = [1, 2, 3, ...customSteps.map(s => s.Step)];
-        const uniqueSteps = [...new Set(allStepNums)].sort((a, b) => a - b);
+        const activeSteps = allFormSteps.filter(s => s.IsActive !== false).sort((a, b) => a.Order - b.Order);
 
-        uniqueSteps.forEach(stepNum => {
+        activeSteps.forEach(step => {
             const stepDiv = document.createElement('div');
             stepDiv.className = 'form-step';
-            if (stepNum === currentStep) stepDiv.classList.add('active');
-            stepDiv.id = `step-${stepNum}`;
+            if (step.Order === currentStep) stepDiv.classList.add('active');
+            stepDiv.id = `step-${step.Order}`;
 
-            // Step title and description
-            let title = '', desc = '', icon = '';
-
-            if (stepNum === 1) {
-                title = 'Personal Information';
-                desc = 'Please provide your basic information.';
-            } else if (stepNum === 2) {
-                title = 'Health Details';
-                desc = 'Tell us about your health.';
-            } else if (stepNum === 3) {
-                title = 'Emergency Contact';
-                desc = 'Provide emergency contact information.';
-            } else {
-                const custom = customSteps.find(s => s.Step === stepNum);
-                if (custom) {
-                    icon = custom.OptionsJson || '📋';
-                    title = custom.DisplayName;
-                    desc = custom.Placeholder || '';
-                }
-            }
-
+            // Step title
             const titleEl = document.createElement('div');
             titleEl.className = 'step-title';
-            if (icon) titleEl.innerHTML = `<span class="step-icon">${icon}</span>${escapeHtml(title)}`;
-            else titleEl.textContent = title;
+            titleEl.textContent = step.Name;
             stepDiv.appendChild(titleEl);
 
-            if (desc) {
-                const descEl = document.createElement('p');
-                descEl.className = 'step-description';
-                descEl.textContent = desc;
-                stepDiv.appendChild(descEl);
+            // Get dynamic fields for this step
+            const dynamicFields = allAdditionalFields.filter(f => f.Step === step.Order);
+            
+            if (dynamicFields.length === 0) {
+                const emptyMsg = document.createElement('p');
+                emptyMsg.className = 'step-description';
+                emptyMsg.textContent = 'No fields configured for this step.';
+                stepDiv.appendChild(emptyMsg);
+            } else {
+                // Get groups for this step
+                const groups = getGroupsForStep(step.Order);
+                const dynamicById = new Map(dynamicFields.map(f => [String(f.FieldId), f]));
+                const used = new Set();
+
+                // Render grouped fields
+                groups.forEach(g => {
+                    const groupFields = g.fieldIds
+                        .map(fid => dynamicById.get(String(fid)))
+                        .filter(f => f != null);
+                    
+                    if (groupFields.length > 0) {
+                        // Create group container
+                        const groupContainer = document.createElement('div');
+                        groupContainer.className = 'fillform-group-container';
+                        
+                        // Group header (optional)
+                        if (g.name && g.name.trim()) {
+                            const groupHeader = document.createElement('div');
+                            groupHeader.className = 'fillform-group-header';
+                            groupHeader.textContent = g.name;
+                            groupContainer.appendChild(groupHeader);
+                        }
+
+                        // Split group fields into two columns
+                        const fieldsRow = createTwoColumnLayout(groupFields);
+                        groupContainer.appendChild(fieldsRow);
+                        
+                        stepDiv.appendChild(groupContainer);
+                        
+                        // Mark as used
+                        groupFields.forEach(f => used.add(String(f.FieldId)));
+                    }
+                });
+
+                // Ungrouped fields - render in two columns
+                const ungroupedFields = dynamicFields.filter(f => !used.has(String(f.FieldId)));
+                if (ungroupedFields.length > 0) {
+                    const fieldsRow = createTwoColumnLayout(ungroupedFields);
+                    stepDiv.appendChild(fieldsRow);
+                }
             }
-
-            // Render static fields
-            const staticFields = staticFieldsMap[stepNum] || [];
-            staticFields.forEach(field => {
-                stepDiv.appendChild(renderField(field.key, field, 'static'));
-            });
-
-            // Render dynamic fields
-            const dynamicFields = allAdditionalFields.filter(f => f.Step === stepNum);
-            dynamicFields.forEach(field => {
-                stepDiv.appendChild(renderField(field.FieldId, field, 'dynamic'));
-            });
 
             container.appendChild(stepDiv);
         });
 
         setupFormListeners();
+        evaluateConditionalFields();
+    }
+
+    // Create two-column layout for fields
+    function createTwoColumnLayout(fields) {
+        const rowContainer = document.createElement('div');
+        rowContainer.className = 'fields-row';
+
+        // Create left and right columns
+        const leftColumn = document.createElement('div');
+        leftColumn.className = 'field-column';
+        
+        const rightColumn = document.createElement('div');
+        rightColumn.className = 'field-column';
+
+        // Split fields: left gets ceil(n/2), right gets floor(n/2)
+        const mid = Math.ceil(fields.length / 2);
+        
+        fields.forEach((field, index) => {
+            const fieldElement = renderField(field.FieldId, field);
+            
+            if (index < mid) {
+                leftColumn.appendChild(fieldElement);
+            } else {
+                rightColumn.appendChild(fieldElement);
+            }
+        });
+
+        rowContainer.appendChild(leftColumn);
+        rowContainer.appendChild(rightColumn);
+        
+        return rowContainer;
     }
 
     // Render single field
-    function renderField(fieldId, field, type) {
+    function renderField(fieldId, field) {
         const group = document.createElement('div');
         group.className = 'form-group';
-        group.setAttribute('data-field-id', fieldId);
-        group.setAttribute('data-field-type', type);
+        group.setAttribute('data-field-id', String(fieldId));
+        group.setAttribute('data-original-required', String(field.IsRequired === true));
+        
+        if (field.IsConditional && field.ConditionalLogicJson) {
+            group.setAttribute('data-conditional-logic', field.ConditionalLogicJson);
+            group.style.display = 'none';
+        }
 
         const label = document.createElement('label');
         label.className = 'form-label';
 
-        const labelText = type === 'static' ? field.label : field.DisplayName;
-        const isRequired = type === 'static' ? field.required : field.IsRequired;
-        const fieldType = type === 'static' ? field.type : field.FieldType;
-        const placeholder = type === 'static' ? (field.placeholder || '') : (field.Placeholder || '');
+        const labelText = field.DisplayName;
+        const isRequired = field.IsRequired;
+        const fieldType = field.FieldType;
+        const placeholder = field.Placeholder || '';
 
         label.textContent = labelText;
         if (isRequired) {
@@ -618,6 +735,11 @@
         }
 
         group.appendChild(label);
+
+        // Helper function to trigger conditional evaluation
+        const triggerEvaluation = () => {
+            setTimeout(() => evaluateConditionalFields(), 0);
+        };
 
         // Create input based on type
         let input;
@@ -631,13 +753,77 @@
             input = document.createElement('select');
             input.className = 'form-control form-select';
 
-            const options = type === 'static' ? field.options : (field.OptionsJson ? JSON.parse(field.OptionsJson).map(o => o.Label || o.label) : []);
+            const options = field.OptionsJson ? JSON.parse(field.OptionsJson).map(o => o.Label || o.label) : [];
+            
+            if (!isRequired) {
+                const emptyOpt = document.createElement('option');
+                emptyOpt.value = '';
+                emptyOpt.textContent = 'Select an option...';
+                input.appendChild(emptyOpt);
+            }
+            
             options.forEach(opt => {
                 const optEl = document.createElement('option');
                 optEl.value = opt;
                 optEl.textContent = opt;
                 input.appendChild(optEl);
             });
+        } else if (fieldType === 'radio') {
+            const radioContainer = document.createElement('div');
+            radioContainer.className = 'radio-group';
+
+            const options = field.OptionsJson ? JSON.parse(field.OptionsJson) : [];
+            
+            if (options.length > 0) {
+                options.forEach((opt, index) => {
+                    const radioDiv = document.createElement('div');
+                    radioDiv.className = 'form-check';
+
+                    const radioInput = document.createElement('input');
+                    radioInput.type = 'radio';
+                    radioInput.className = 'form-check-input';
+                    radioInput.name = field.FieldName || fieldId;
+                    radioInput.id = `${field.FieldName || fieldId}_${index}`;
+                    radioInput.value = opt.Value || opt.value || opt.Label || opt.label || opt;
+                    
+                    if (opt.IsDefault || opt.isDefault) {
+                        radioInput.checked = true;
+                        formData[fieldId] = radioInput.value;
+                    }
+                    
+                    if (isRequired && index === 0) {
+                        radioInput.required = true;
+                    }
+
+                    const radioLabel = document.createElement('label');
+                    radioLabel.className = 'form-check-label';
+                    radioLabel.setAttribute('for', `${field.FieldName || fieldId}_${index}`);
+                    radioLabel.textContent = opt.Label || opt.label || opt.Value || opt.value || opt;
+
+                    // Multiple event listeners for immediate response
+                    radioInput.addEventListener('click', () => {
+                        formData[fieldId] = radioInput.value;
+                        triggerEvaluation();
+                    });
+                    radioInput.addEventListener('change', () => {
+                        formData[fieldId] = radioInput.value;
+                        triggerEvaluation();
+                    });
+
+                    radioDiv.appendChild(radioInput);
+                    radioDiv.appendChild(radioLabel);
+                    radioContainer.appendChild(radioDiv);
+                });
+            } else {
+                const noOptions = document.createElement('p');
+                noOptions.style.color = '#999';
+                noOptions.style.fontSize = '14px';
+                noOptions.textContent = 'No options configured';
+                radioContainer.appendChild(noOptions);
+            }
+
+            group.appendChild(radioContainer);
+            return group;
         } else if (fieldType === 'checkbox') {
             const checkDiv = document.createElement('div');
             checkDiv.className = 'form-check';
@@ -655,12 +841,35 @@
             checkDiv.appendChild(checkLabel);
 
             group.innerHTML = '';
+            group.setAttribute('data-field-id', String(fieldId));
+            group.setAttribute('data-original-required', String(field.IsRequired === true));
+            
+            if (field.IsConditional && field.ConditionalLogicJson) {
+                group.setAttribute('data-conditional-logic', field.ConditionalLogicJson);
+                group.style.display = 'none';
+            }
+            
             group.appendChild(checkDiv);
+            
             const hiddenFalse = document.createElement('input');
             hiddenFalse.type = 'hidden';
             hiddenFalse.value = 'false';
-            // name assignment happens below uniformly
+            hiddenFalse.name = field.FieldName || fieldId;
             group.appendChild(hiddenFalse);
+            
+            input.name = field.FieldName || fieldId;
+            if (isRequired) input.required = true;
+            
+            // Multiple event listeners for immediate response
+            input.addEventListener('click', () => {
+                formData[fieldId] = input.checked;
+                triggerEvaluation();
+            });
+            input.addEventListener('change', () => {
+                formData[fieldId] = input.checked;
+                triggerEvaluation();
+            });
+            
             return group;
         } else if (fieldType === 'date') {
             input = document.createElement('input');
@@ -688,12 +897,7 @@
             input.placeholder = placeholder;
         }
 
-        input.name = type === 'static' ? fieldId : (field.FieldName || fieldId);
-        // ensure hidden false aligns to the same name for checkboxes
-        if (fieldType === 'checkbox') {
-            const hidden = group.querySelector('input[type="hidden"]');
-            if (hidden) hidden.name = input.name;
-        }
+        input.name = field.FieldName || fieldId;
         if (isRequired) input.required = true;
 
         if (formData[fieldId] !== undefined) {
@@ -701,39 +905,142 @@
             else input.value = formData[fieldId];
         }
 
+        // Multiple event listeners for immediate response
         input.addEventListener('change', () => {
             formData[fieldId] = fieldType === 'checkbox' ? input.checked : input.value;
-            applyConditional();
+            triggerEvaluation();
         });
+        
+        input.addEventListener('input', () => {
+            formData[fieldId] = fieldType === 'checkbox' ? input.checked : input.value;
+            triggerEvaluation();
+        });
+        
+        // Additional click listener for select dropdowns
+        if (fieldType === 'select') {
+            input.addEventListener('click', () => {
+                triggerEvaluation();
+            });
+        }
 
         group.appendChild(input);
         return group;
     }
 
-    // Apply conditional logic
-    function applyConditional() {
-        allAdditionalFields.forEach(field => {
-            if (!field.IsConditional || !field.ConditionalLogicJson) return;
-
+    // Evaluate conditional fields (permanent implementation)
+    function evaluateConditionalFields() {
+        console.log('=== Evaluating Conditional Fields ===');
+        
+        document.querySelectorAll('[data-conditional-logic]').forEach(fieldContainer => {
             try {
-                const condition = JSON.parse(field.ConditionalLogicJson);
-                const depField = document.querySelector(`[name="${condition.DependsOnFieldKey}"]`);
-                const fieldGroup = document.querySelector(`[data-field-id="${field.FieldId}"]`);
-
-                if (!depField || !fieldGroup) return;
-
-                const depValue = depField.type === 'checkbox' ? depField.checked : depField.value;
-                const shouldShow = String(depValue).toLowerCase() === String(condition.ShowWhenValue).toLowerCase();
-
+                const logicJson = fieldContainer.getAttribute('data-conditional-logic');
+                if (!logicJson) return;
+                
+                const logic = JSON.parse(logicJson);
+                
+                // Support multiple property name variations
+                const parentFieldId = logic.parentFieldId || logic.ParentFieldId || logic.DependsOnFieldKey || logic.dependsOnFieldKey;
+                const expectedValue = logic.expectedValue || logic.ExpectedValue || logic.ShowWhenValue || logic.showWhenValue;
+                const action = logic.action || logic.Action || 'show';
+                
+                console.log('Conditional Field Logic:', {
+                    logicJson,
+                    parentFieldId,
+                    expectedValue,
+                    action
+                });
+                
+                if (!parentFieldId) {
+                    console.warn('No parentFieldId found in logic');
+                    return;
+                }
+                
+                const parentContainer = document.querySelector(`[data-field-id="${parentFieldId}"]`);
+                if (!parentContainer) {
+                    console.warn(`Parent container not found for field ID: ${parentFieldId}`);
+                    return;
+                }
+                
+                let parentValue = '';
+                const parentInput = parentContainer.querySelector('input[type="radio"]:checked, input[type="checkbox"], input:not([type="radio"]):not([type="checkbox"]), select, textarea');
+                
+                if (parentInput) {
+                    if (parentInput.type === 'checkbox') {
+                        parentValue = parentInput.checked ? 'true' : 'false';
+                    } else if (parentInput.type === 'radio') {
+                        parentValue = parentInput.value || '';
+                    } else {
+                        parentValue = parentInput.value || '';
+                    }
+                }
+                
+                console.log('Parent Value:', parentValue);
+                
+                // FIXED: Support both exact match AND multiple trigger values
+                let conditionMet = false;
+                
+                // Normalize for comparison
+                const normalizedParentValue = String(parentValue).toLowerCase().trim();
+                const normalizedExpectedValue = String(expectedValue || '').toLowerCase().trim();
+                
+                console.log('Normalized Values:', {
+                    normalizedParentValue,
+                    normalizedExpectedValue
+                });
+                
+                // First: Check for exact match (handles values with commas)
+                if (normalizedParentValue === normalizedExpectedValue) {
+                    conditionMet = true;
+                    console.log('Condition met: EXACT MATCH');
+                } 
+                // Second: Check if expectedValue is a multi-value list
+                else if (expectedValue && expectedValue.includes(',')) {
+                    // Split by comma and check if any value matches
+                    const allowedValues = expectedValue.split(',').map(v => v.trim().toLowerCase());
+                    conditionMet = allowedValues.some(allowedVal => allowedVal === normalizedParentValue);
+                    console.log('Checking multi-value:', { allowedValues, conditionMet });
+                }
+                
+                const shouldShow = (action === 'show' && conditionMet) || (action === 'hide' && !conditionMet);
+                
+                console.log('Evaluation Result:', {
+                    conditionMet,
+                    action,
+                    shouldShow,
+                    currentDisplay: fieldContainer.style.display
+                });
+                
+                const inputs = fieldContainer.querySelectorAll('input, select, textarea');
+                const wasRequired = fieldContainer.getAttribute('data-original-required') === 'true';
+                
                 if (shouldShow) {
-                    fieldGroup.classList.remove('hidden');
+                    console.log('SHOWING FIELD');
+                    fieldContainer.style.display = '';
+                    inputs.forEach(inp => {
+                        inp.disabled = false;
+                        if (wasRequired && inp.type !== 'hidden') {
+                            inp.required = true;
+                        }
+                    });
                 } else {
-                    fieldGroup.classList.add('hidden');
+                    console.log('HIDING FIELD');
+                    fieldContainer.style.display = 'none';
+                    inputs.forEach(inp => {
+                        inp.disabled = true;
+                        inp.required = false;
+                    });
                 }
             } catch (e) {
-                console.error('Conditional error:', e);
+                console.error('Error evaluating conditional logic:', e);
             }
         });
+        
+        console.log('=== End Conditional Evaluation ===');
+    }
+
+    // Apply conditional logic (legacy support)
+    function applyConditional() {
+        evaluateConditionalFields();
     }
 
     // Validate step
@@ -741,16 +1048,20 @@
         const stepEl = document.getElementById(`step-${step}`);
         if (!stepEl) return true;
 
-        const requiredInputs = stepEl.querySelectorAll('[required]');
+        const requiredInputs = stepEl.querySelectorAll('[required]:not([disabled])');
         let valid = true;
 
         requiredInputs.forEach(input => {
             const group = input.closest('.form-group');
-            if (group && group.classList.contains('hidden')) return;
+            if (group && group.style.display === 'none') return;
 
             let isValid = false;
             if (input.type === 'checkbox') {
                 isValid = input.checked;
+            } else if (input.type === 'radio') {
+                const name = input.name;
+                const checked = stepEl.querySelector(`input[name="${name}"]:checked`);
+                isValid = checked !== null;
             } else {
                 isValid = input.value.trim() !== '';
             }
@@ -782,7 +1093,10 @@
 
         renderIndicator();
         updateButtons();
-        applyConditional();
+        
+        // Ensure conditional fields are evaluated after step change
+        setTimeout(() => evaluateConditionalFields(), 0);
+        
         window.scrollTo(0, 0);
     }
 
@@ -812,18 +1126,6 @@
         }, 3000);
     }
 
-    // Escape HTML
-    function escapeHtml(text) {
-        const map = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;'
-        };
-        return text.replace(/[&<>"']/g, m => map[m]);
-    }
-
     // Form submit
     document.getElementById('fillForm').addEventListener('submit', function(e) {
         if (!validateStep(currentStep)) {
@@ -839,20 +1141,7 @@
     document.getElementById('nextBtn').addEventListener('click', () => goToStep(currentStep + 1));
     document.getElementById('prevBtn').addEventListener('click', () => goToStep(currentStep - 1));
 
-    // Initialize
-    document.addEventListener('DOMContentLoaded', () => {
-        renderIndicator();
-        renderForm();
-        updateButtons();
-        applyConditional();
-    });
-</script>
-
-<script>
-    // =========================
-    // Form Builder grouping -> FillForm rendering (UI only)
-    // Reads localStorage formbuilder.grouping.v1 and renders group headers in FillForm
-    // =========================
+    // Form Builder grouping
     const GROUPING_STORAGE_KEY = 'formbuilder.grouping.v1';
 
     function safeJsonParse(text, fallback) {
@@ -872,7 +1161,6 @@
         const st = (store.steps && store.steps[String(stepNum)]) ? store.steps[String(stepNum)] : null;
         const groups = st && Array.isArray(st.groups) ? st.groups : [];
 
-        // Only groups with at least one field should render in FillForm
         return groups
             .map(g => ({
                 groupId: String(g.groupId || ''),
@@ -882,99 +1170,13 @@
             .filter(g => g.groupId && g.fieldIds.length > 0);
     }
 
-    function createGroupHeader(titleText) {
-        const h = document.createElement('div');
-        h.className = 'fillform-group-header';
-        h.textContent = titleText;
-        return h;
-    }
-
-    // 1) Replace renderForm() with grouped rendering (dynamic fields only)
-    const __origRenderForm = renderForm;
-    renderForm = function () {
-        const container = document.getElementById('formContent');
-        container.innerHTML = '';
-
-        const allStepNums = [1, 2, 3, ...customSteps.map(s => s.Step)];
-        const uniqueSteps = [...new Set(allStepNums)].sort((a, b) => a - b);
-
-        uniqueSteps.forEach(stepNum => {
-            const stepDiv = document.createElement('div');
-            stepDiv.className = 'form-step';
-            if (stepNum === currentStep) stepDiv.classList.add('active');
-            stepDiv.id = `step-${stepNum}`;
-
-            // Step title and description
-            let title = '', desc = '', icon = '';
-
-            if (stepNum === 1) {
-                title = 'Personal Information';
-                desc = 'Please provide your basic information.';
-            } else if (stepNum === 2) {
-                title = 'Health Details';
-                desc = 'Tell us about your health.';
-            } else if (stepNum === 3) {
-                title = 'Emergency Contact';
-                desc = 'Provide emergency contact information.';
-            } else {
-                const custom = customSteps.find(s => s.Step === stepNum);
-                if (custom) {
-                    icon = custom.OptionsJson || '📋';
-                    title = custom.DisplayName;
-                    desc = custom.Placeholder || '';
-                }
-            }
-
-            const titleEl = document.createElement('div');
-            titleEl.className = 'step-title';
-            if (icon) titleEl.innerHTML = `<span class="step-icon">${icon}</span>${escapeHtml(title)}`;
-            else titleEl.textContent = title;
-            stepDiv.appendChild(titleEl);
-
-            if (desc) {
-                const descEl = document.createElement('p');
-                descEl.className = 'step-description';
-                descEl.textContent = desc;
-                stepDiv.appendChild(descEl);
-            }
-
-            // Static fields stay as-is (ungrouped)
-            const staticFields = staticFieldsMap[stepNum] || [];
-            staticFields.forEach(field => {
-                stepDiv.appendChild(renderField(field.key, field, 'static'));
-            });
-
-            // Dynamic fields grouped by stored group mapping
-            const allDynamicForStep = allAdditionalFields.filter(f => f.Step === stepNum);
-            const dynamicById = new Map(allDynamicForStep.map(f => [String(f.FieldId), f]));
-
-            const groups = getGroupsForStep(stepNum);
-            const used = new Set();
-
-            groups.forEach(g => {
-                // Group name optional: if empty, do NOT add header (but still render fields)
-                if (g.name) {
-                    stepDiv.appendChild(createGroupHeader(g.name));
-                }
-
-                g.fieldIds.forEach(fid => {
-                    const field = dynamicById.get(String(fid));
-                    if (!field) return;
-                    used.add(String(fid));
-                    stepDiv.appendChild(renderField(field.FieldId, field, 'dynamic'));
-                });
-            });
-
-            // Ungrouped dynamic fields (not mapped) render after groups
-            allDynamicForStep.forEach(field => {
-                if (!used.has(String(field.FieldId))) {
-                    stepDiv.appendChild(renderField(field.FieldId, field, 'dynamic'));
-                }
-            });
-
-            container.appendChild(stepDiv);
-        });
-
-        setupFormListeners();
-    };
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        renderIndicator();
+        renderForm();
+        updateButtons();
+        
+        // Initial evaluation of conditional fields
+        setTimeout(() => evaluateConditionalFields(), 100);
+    });
 </script>

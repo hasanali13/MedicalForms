@@ -1,338 +1,329 @@
 @model Medical.Models.ViewPublicForm
 @{
-    ViewData["Title"] = "Form Submission Details";
-    ViewBag.ActiveMenu = "ViewForms";
+    ViewData["Title"] = "Submission Details";
+    ViewBag.ActiveMenu = "Submissions";
 
     var additionalFieldsData = ViewBag.AdditionalFieldsData as Dictionary<string, Medical.Controllers.AdditionalFieldValue>
         ?? new Dictionary<string, Medical.Controllers.AdditionalFieldValue>();
     
-    var customSteps = ViewBag.CustomSteps as List<Medical.Models.AdditionalField> ?? new List<Medical.Models.AdditionalField>();
+    // Get step information from FormSchemaJson via controller
+    var formStepsData = ViewBag.FormSteps as List<Medical.Models.FormStep> ?? new List<Medical.Models.FormStep>();
     
-    // Get all unique step numbers from additional fields data
+    // Get all unique step numbers from the actual submission data
     var allSteps = additionalFieldsData.Values
         .GroupBy(f => f.Step)
         .OrderBy(g => g.Key)
         .Select(g => g.Key)
         .ToList();
-    
-    // Include all steps 1-3 and any custom steps
-    var displaySteps = new List<int> { 1, 2, 3 };
-    displaySteps.AddRange(allSteps.Where(s => s > 3));
-    displaySteps = displaySteps.Distinct().OrderBy(s => s).ToList();
 }
 
-<style>
-    .field-card {
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 20px;
-        background: #f8f9fa;
-    }
-
-    .field-section {
-        margin-bottom: 30px;
-    }
-
-    .field-section-title {
-        border-bottom: 2px solid #1F6DFF;
-        padding-bottom: 10px;
-        margin-bottom: 20px;
-        color: #1F2937;
-        font-weight: 600;
-    }
-
-    .field-row {
-        display: flex;
-        flex-wrap: wrap;
-        margin-bottom: 15px;
-        padding: 10px;
-        background: white;
-        border-radius: 6px;
-        border-left: 4px solid #1F6DFF;
-    }
-
-    .field-label {
-        flex: 0 0 200px;
-        font-weight: 600;
-        color: #374151;
-        padding-right: 15px;
-    }
-
-    .field-value {
-        flex: 1;
-        color: #4B5563;
-    }
-
-    .empty-field {
-        color: #9CA3AF;
-        font-style: italic;
-    }
-
-    .badge-step {
-        background: #1F6DFF;
-        color: white;
-        padding: 3px 8px;
-        border-radius: 12px;
-        font-size: 12px;
-        margin-left: 8px;
-    }
-</style>
-
-<div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Form Submission Details</h2>
-        <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+<!-- Top Bar -->
+<div class="admin-topbar">
+    <div>
+        <h1 class="admin-topbar-title">Submission Details</h1>
+        <p class="admin-topbar-subtitle">
+            <i class="fas fa-calendar"></i> Submitted on @Model.CreatedAt.ToString("MMMM dd, yyyy 'at' HH:mm")
+        </p>
     </div>
-
-    <div class="card shadow">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">
-                <i class="fas fa-file-medical me-2"></i>
-                Medical Form Submission
-                <small class="float-end">Submitted: @Model.CreatedAt.ToString("yyyy-MM-dd HH:mm")</small>
-            </h5>
-        </div>
-
-        <div class="card-body">
-            <!-- Dynamically render all steps -->
-            @foreach (var stepNum in displaySteps)
-            {
-                var stepTitle = GetStepTitle(stepNum);
-                var stepFields = GetStepFields(stepNum, Model);
-                var additionalFields = additionalFieldsData.Values.Where(f => f.Step == stepNum).ToList();
-                
-                <div class="field-section">
-                    <h4 class="field-section-title">
-                        Step @stepNum: @stepTitle
-                        <span class="badge-step">Step @stepNum</span>
-                    </h4>
-
-                    <div class="row">
-                        <!-- Original Fields for Steps 1-3 -->
-                        @foreach (var field in stepFields)
-                        {
-                            <div class="col-md-6">
-                                <div class="field-row">
-                                    <div class="field-label">@field.Key</div>
-                                    <div class="field-value">
-                                        @if (!string.IsNullOrEmpty(field.Value))
-                                        {
-                                            @field.Value
-                                        }
-                                        else
-                                        {
-                                            <span class="empty-field">Not provided</span>
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                        }
-
-                        <!-- Additional Fields for all steps -->
-                        @foreach (var field in additionalFields)
-                        {
-                            <div class="col-md-6">
-                                <div class="field-row">
-                                    <div class="field-label">
-                                        @field.DisplayName
-                                        <small class="text-muted d-block">@field.FieldType</small>
-                                    </div>
-                                    <div class="field-value">
-                                        @if (!string.IsNullOrEmpty(field.Value))
-                                        {
-                                            if (field.FieldType.ToLower() == "checkbox")
-                                            {
-                                                @(field.Value == "true" ? "? Yes" : "? No")
-                                            }
-                                            else if (field.FieldType.ToLower() == "date" && DateTime.TryParse(field.Value, out DateTime dateValue))
-                                            {
-                                                @dateValue.ToString("yyyy-MM-dd")
-                                            }
-                                            else if (field.FieldType.ToLower() == "textarea")
-                                            {
-                                                <div style="white-space: pre-line">@field.Value</div>
-                                            }
-                                            else
-                                            {
-                                                @field.Value
-                                            }
-                                        }
-                                        else
-                                        {
-                                            <span class="empty-field">Not provided</span>
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                </div>
-            }
-
-            <!-- Summary Section -->
-            <div class="field-section">
-                <h4 class="field-section-title">Submission Summary</h4>
-
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="field-card">
-                            <h6><i class="fas fa-user me-2"></i>Personal Info</h6>
-                            <div class="mb-2">
-                                <small>Fields: 4</small>
-                            </div>
-                            <div class="mb-2">
-                                <small>Additional: @additionalFieldsData.Values.Count(f => f.Step == 1)</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-4">
-                        <div class="field-card">
-                            <h6><i class="fas fa-heartbeat me-2"></i>Health Details</h6>
-                            <div class="mb-2">
-                                <small>Fields: 5</small>
-                            </div>
-                            <div class="mb-2">
-                                <small>Additional: @additionalFieldsData.Values.Count(f => f.Step == 2)</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-4">
-                        <div class="field-card">
-                            <h6><i class="fas fa-phone-alt me-2"></i>Emergency Contact</h6>
-                            <div class="mb-2">
-                                <small>Fields: @(Model.HasAlternativeContact.HasValue && Model.HasAlternativeContact.Value ? "6" : "4")</small>
-                            </div>
-                            <div class="mb-2">
-                                <small>Additional: @additionalFieldsData.Values.Count(f => f.Step == 3)</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    @foreach (var stepNum in displaySteps.Where(s => s > 3))
-                    {
-                        var customStep = customSteps.FirstOrDefault(cs => cs.Step == stepNum);
-                        var customStepTitle = customStep?.DisplayName ?? $"Step {stepNum}";
-                        var fieldCount = additionalFieldsData.Values.Count(f => f.Step == stepNum);
-                        
-                        <div class="col-md-4">
-                            <div class="field-card">
-                                <h6><i class="fas fa-list me-2"></i>@customStepTitle</h6>
-                                <div class="mb-2">
-                                    <small>Fields: @fieldCount</small>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                </div>
-            </div>
-
-            <!-- Debug Information (Collapsible) -->
-            @if (!string.IsNullOrEmpty(Model.AdditionalFieldsJson))
-            {
-                <div class="mt-4">
-                    <div class="accordion" id="debugAccordion">
-                        <div class="accordion-item">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#debugCollapse">
-                                    <i class="fas fa-code me-2"></i>Technical Details (JSON Data)
-                                </button>
-                            </h2>
-                            <div id="debugCollapse" class="accordion-collapse collapse" data-bs-parent="#debugAccordion">
-                                <div class="accordion-body">
-                                    <div class="alert alert-info">
-                                        <small><strong>Form ID:</strong> @Model.ViewPublicFormId</small><br>
-                                        <small><strong>Form Version:</strong> @Model.FormVersion</small><br>
-                                        <small><strong>Total Additional Fields:</strong> @additionalFieldsData.Count</small>
-                                    </div>
-                                    <h6>Raw JSON Data:</h6>
-                                    <pre class="bg-dark text-light p-3 rounded" style="max-height: 300px; overflow-y: auto; font-size: 12px;">@Model.AdditionalFieldsJson</pre>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            }
-        </div>
-
-        <div class="card-footer">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <span class="text-muted">
-                        <i class="fas fa-database me-1"></i>
-                        Form ID: @Model.ViewPublicFormId.ToString().Substring(0, 8)...
-                    </span>
-                </div>
-                <div>
-                    <a asp-action="Index" class="btn btn-secondary me-2">
-                        <i class="fas fa-arrow-left me-1"></i> Back to List
-                    </a>
-                    @if (Model.IsDeleted.HasValue && Model.IsDeleted.Value)
-                    {
-                        <span class="badge bg-danger">Deleted</span>
-                    }
-                </div>
-            </div>
-        </div>
+    <div class="admin-topbar-actions">
+        <a href="/ViewPublicForms/Index" class="btn-origin btn-origin-secondary">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+        <button type="button" class="btn-origin btn-origin-primary" onclick="window.print()">
+            <i class="fas fa-print"></i> Print
+        </button>
     </div>
 </div>
 
-@section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Details page loaded');
-        });
-    </script>
-}
+<!-- Main Content -->
+<div class="admin-content">
+    
+    <!-- Participant Info Card -->
+    <div class="origin-card participant-summary-card">
+        <div class="origin-card-body">
+            <div class="participant-summary">
+                <div class="participant-avatar-large">
+                    @{
+                        var initial = "A";
+                        // Try to get initial from any name field in the data
+                        var nameField = additionalFieldsData.Values
+                            .FirstOrDefault(f => f.DisplayName.ToLower().Contains("name") && !string.IsNullOrEmpty(f.Value));
+                        
+                        if (nameField != null)
+                        {
+                            initial = nameField.Value.Substring(0, 1).ToUpper();
+                        }
+                    }
+                    @initial
+                </div>
+                <div class="participant-summary-details">
+                    <h2 class="participant-summary-name">
+                        @if (nameField != null)
+                        {
+                            @nameField.Value
+                        }
+                        else
+                        {
+                            @:Anonymous Participant
+                        }
+                    </h2>
+                    <div class="participant-summary-meta">
+                        <div class="meta-item">
+                            <i class="fas fa-id-card"></i>
+                            <span>ID: @Model.ViewPublicFormId.ToString().Substring(0, 8)</span>
+                        </div>
+                        <div class="meta-item">
+                            <i class="fas fa-calendar"></i>
+                            <span>@Model.CreatedAt.ToString("MMM dd, yyyy")</span>
+                        </div>
+                        <div class="meta-item">
+                            <i class="fas fa-clock"></i>
+                            <span>@Model.CreatedAt.ToString("HH:mm")</span>
+                        </div>
+                    </div>
+                    <div class="participant-summary-badges">
+                        <span class="origin-badge origin-badge-success">
+                            <i class="fas fa-check-circle"></i> Completed
+                        </span>
+                        @if (additionalFieldsData.Any())
+                        {
+                            <span class="origin-badge origin-badge-info">
+                                <i class="fas fa-list"></i> @additionalFieldsData.Count Fields
+                            </span>
+                        }
+                        @if (allSteps.Any())
+                        {
+                            <span class="origin-badge origin-badge-primary">
+                                <i class="fas fa-layer-group"></i> @allSteps.Count Steps
+                            </span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-@functions {
-    private string GetStepTitle(int step)
+    <!-- 100% DYNAMIC DATA - NO HARDCODED FIELDS -->
+    @if (additionalFieldsData.Any())
     {
-        switch (step)
+        foreach (var stepNum in allSteps)
         {
-            case 1: return "Personal Information";
-            case 2: return "Health Details";
-            case 3: return "Emergency Contact";
-            default: return "Step " + step;
+            var fieldsInStep = additionalFieldsData.Values.Where(f => f.Step == stepNum).OrderBy(f => f.DisplayName).ToList();
+            
+            if (fieldsInStep.Any())
+            {
+                // Get step name from FormSteps
+                var stepData = formStepsData.FirstOrDefault(s => s.Order == stepNum);
+                var stepTitle = stepData?.Name ?? $"Step {stepNum}";
+                var stepIcon = GetStepIcon(stepNum);
+                
+                <div class="origin-card step-details-card">
+                    <div class="origin-card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h3 class="origin-card-title mb-1">
+                                    <i class="@stepIcon"></i> @stepTitle
+                                </h3>
+                                <p class="text-muted mb-0" style="font-size: var(--font-size-xs);">
+                                    <i class="fas fa-list"></i> @fieldsInStep.Count field@(fieldsInStep.Count != 1 ? "s" : "") submitted
+                                </p>
+                            </div>
+                            <span class="step-number-badge">Step @stepNum</span>
+                        </div>
+                    </div>
+                    <div class="origin-card-body">
+                        <div class="fields-grid">
+                            @foreach (var field in fieldsInStep)
+                            {
+                                <div class="field-display-item">
+                                    <div class="field-display-label">
+                                        <i class="fas fa-tag"></i>
+                                        @field.DisplayName
+                                        <span class="field-type-indicator">@field.FieldType</span>
+                                    </div>
+                                    <div class="field-display-value">
+                                        @if (!string.IsNullOrEmpty(field.Value))
+                                        {
+                                            if (field.FieldType.Equals("checkbox", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="@(field.Value == "true" ? "value-yes" : "value-no")">
+                                                    <i class="@(field.Value == "true" ? "fas fa-check-circle" : "fas fa-times-circle")"></i>
+                                                    @(field.Value == "true" ? "Yes" : "No")
+                                                </span>
+                                            }
+                                            else if (field.FieldType.Equals("date", StringComparison.OrdinalIgnoreCase) && DateTime.TryParse(field.Value, out DateTime dateValue))
+                                            {
+                                                <span>
+                                                    <i class="fas fa-calendar-day"></i>
+                                                    @dateValue.ToString("MMMM dd, yyyy")
+                                                </span>
+                                            }
+                                            else if (field.FieldType.Equals("textarea", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <div class="textarea-value">@field.Value</div>
+                                            }
+                                            else if (field.FieldType.Equals("email", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span>
+                                                    <i class="fas fa-envelope"></i>
+                                                    <a href="mailto:@field.Value" style="color: var(--origin-primary);">@field.Value</a>
+                                                </span>
+                                            }
+                                            else if (field.FieldType.Equals("tel", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span>
+                                                    <i class="fas fa-phone"></i>
+                                                    <a href="tel:@field.Value" style="color: var(--origin-primary);">@field.Value</a>
+                                                </span>
+                                            }
+                                            else if (field.FieldType.Equals("radio", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="value-radio">
+                                                    <i class="fas fa-dot-circle"></i>
+                                                    @field.Value
+                                                </span>
+                                            }
+                                            else if (field.FieldType.Equals("select", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="value-select">
+                                                    <i class="fas fa-list-ul"></i>
+                                                    @field.Value
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span>@field.Value</span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="empty-value">
+                                                <i class="fas fa-minus-circle"></i> Not provided
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
         }
     }
-
-    private IEnumerable<KeyValuePair<string, string>> GetStepFields(int step, Medical.Models.ViewPublicForm model)
+    else
     {
-        switch (step)
+        <!-- No Data Message -->
+        <div class="origin-card">
+            <div class="origin-card-body">
+                <div class="origin-empty-state" style="padding: var(--space-2xl);">
+                    <div class="origin-empty-state-icon">
+                        <i class="fas fa-inbox"></i>
+                    </div>
+                    <div class="origin-empty-state-title">No Form Data</div>
+                    <p class="origin-empty-state-text">This submission does not contain any form field data</p>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Summary Statistics -->
+    <div class="submission-summary-grid">
+        <div class="origin-card">
+            <div class="origin-card-body">
+                <div class="summary-stat">
+                    <div class="summary-stat-icon summary-stat-icon-primary">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <div>
+                        <div class="summary-stat-value">@allSteps.Count</div>
+                        <div class="summary-stat-label">Steps Completed</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="origin-card">
+            <div class="origin-card-body">
+                <div class="summary-stat">
+                    <div class="summary-stat-icon summary-stat-icon-success">
+                        <i class="fas fa-list-check"></i>
+                    </div>
+                    <div>
+                        <div class="summary-stat-value">@additionalFieldsData.Count</div>
+                        <div class="summary-stat-label">Total Fields</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="origin-card">
+            <div class="origin-card-body">
+                <div class="summary-stat">
+                    <div class="summary-stat-icon summary-stat-icon-info">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div>
+                        <div class="summary-stat-value">
+                            @((DateTime.Now - Model.CreatedAt).Days == 0 ? "Today" : $"{(DateTime.Now - Model.CreatedAt).Days}d ago")
+                        </div>
+                        <div class="summary-stat-label">Submission Time</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Technical Details -->
+    @if (!string.IsNullOrEmpty(Model.AdditionalFieldsJson))
+    {
+        <div class="origin-card">
+            <div class="origin-card-header">
+                <h3 class="origin-card-title">
+                    <i class="fas fa-code"></i> Technical Details
+                </h3>
+            </div>
+            <div class="origin-card-body">
+                <div class="technical-details-grid">
+                    <div class="technical-detail-item">
+                        <div class="technical-detail-label">Form ID</div>
+                        <div class="technical-detail-value">@Model.ViewPublicFormId</div>
+                    </div>
+                    <div class="technical-detail-item">
+                        <div class="technical-detail-label">Form Version</div>
+                        <div class="technical-detail-value">@Model.FormVersion</div>
+                    </div>
+                    <div class="technical-detail-item">
+                        <div class="technical-detail-label">Created At</div>
+                        <div class="technical-detail-value">@Model.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</div>
+                    </div>
+                    <div class="technical-detail-item">
+                        <div class="technical-detail-label">Total Fields</div>
+                        <div class="technical-detail-value">@additionalFieldsData.Count</div>
+                    </div>
+                </div>
+                
+                <details class="json-data-collapse">
+                    <summary class="json-data-summary">
+                        <i class="fas fa-code"></i> View Raw JSON Data
+                    </summary>
+                    <pre class="json-data-content">@Model.AdditionalFieldsJson</pre>
+                </details>
+            </div>
+        </div>
+    }
+</div>
+
+@functions {
+    private string GetStepIcon(int step)
+    {
+        // Return icon based on step number
+        return step switch
         {
-            case 1:
-                return new List<KeyValuePair<string, string>>
-                {
-                    new KeyValuePair<string, string>("Full Name", model.FullName),
-                    new KeyValuePair<string, string>("Age", model.Age.HasValue ? model.Age.Value.ToString() : ""),
-                    new KeyValuePair<string, string>("Gender", model.Gender),
-                    new KeyValuePair<string, string>("Date of Birth", model.DateOfBirth.HasValue ? model.DateOfBirth.Value.ToString("yyyy-MM-dd") : ""),
-                };
-            case 2:
-                return new List<KeyValuePair<string, string>>
-                {
-                    new KeyValuePair<string, string>("Has Allergies", model.HasAllergies.HasValue ? (model.HasAllergies.Value ? "Yes" : "No") : ""),
-                    new KeyValuePair<string, string>("Allergy Description", model.AllergyDescription),
-                    new KeyValuePair<string, string>("Current Medication", model.CurrentMedication),
-                    new KeyValuePair<string, string>("Height (cm)", model.HeightCm.HasValue ? model.HeightCm.Value.ToString("0.##") : ""),
-                    new KeyValuePair<string, string>("Weight (kg)", model.WeightKg.HasValue ? model.WeightKg.Value.ToString("0.##") : ""),
-                };
-            case 3:
-                return new List<KeyValuePair<string, string>>
-                {
-                    new KeyValuePair<string, string>("Contact Name", model.ContactName),
-                    new KeyValuePair<string, string>("Relationship", model.Relationship),
-                    new KeyValuePair<string, string>("Phone Number", model.PhoneNumber),
-                    new KeyValuePair<string, string>("Has Alternative Contact", model.HasAlternativeContact.HasValue ? (model.HasAlternativeContact.Value ? "Yes" : "No") : ""),
-                    new KeyValuePair<string, string>("Alternative Contact Name", model.HasAlternativeContact.HasValue && model.HasAlternativeContact.Value ? model.AltContactName : ""),
-                    new KeyValuePair<string, string>("Alternative Phone Number", model.HasAlternativeContact.HasValue && model.HasAlternativeContact.Value ? model.AltPhoneNumber : ""),
-                };
-            default:
-                // Custom steps don't have original fields
-                return Enumerable.Empty<KeyValuePair<string, string>>();
-        }
+            1 => "fas fa-user",
+            2 => "fas fa-heartbeat",
+            3 => "fas fa-phone-alt",
+            4 => "fas fa-notes-medical",
+            _ => "fas fa-clipboard"
+        };
     }
 }

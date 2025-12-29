@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Medical.Data;
 using Medical.Models;
+using Medical.Helpers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -33,12 +34,17 @@ namespace Medical.Controllers
                 .ThenBy(f => f.DisplayOrder)
                 .ToList();
 
-            // Separate steps from regular fields
-            var steps = allFields.Where(f => f.FieldType == "step").ToList();
-            var regularFields = allFields.Where(f => f.FieldType != "step").ToList();
+            ViewBag.AdditionalFields = allFields.Where(f => f.FieldType != "step").ToList();
 
-            ViewBag.AdditionalFields = regularFields;
-            ViewBag.CustomSteps = steps; // Pass steps to view
+            // Dynamic steps from FormSchemaJson
+            var formSteps = Medical.Helpers.FormSchemaStepsHelper.ReadSteps(configForm.FormSchemaJson)
+                .Where(s => s.IsActive)
+                .OrderBy(s => s.Order)
+                .ToList();
+            ViewBag.FormSteps = formSteps;
+
+            // Pass FormSchemaJson for dynamic rendering
+            ViewBag.FormSchemaJson = configForm.FormSchemaJson ?? string.Empty;
 
             var model = new ViewPublicForm();
             // Load labels from config
@@ -52,23 +58,50 @@ namespace Medical.Controllers
         {
             ViewBag.ActiveMenu = "PublicForm";
 
-            // Get additional fields from configuration (hide soft-deleted)
             var configForm = GetOrCreateConfigForm();
-            var allFields = configForm.AdditionalFields
+
+            // Back-compat: if older schema lacks groups, seed a default group per step.
+            try
+            {
+                var seeded = Medical.Helpers.FormSchemaStepsHelper.EnsureDefaultGroupsSeeded(configForm.FormSchemaJson);
+                if (seeded.Changed)
+                {
+                    configForm.FormSchemaJson = seeded.UpdatedJson;
+                    configForm.FormVersion++;
+                    configForm.CreatedAt = DateTime.UtcNow;
+                    _context.ViewPublicForm.Update(configForm);
+                    _context.SaveChanges();
+                }
+            }
+            catch
+            {
+                // ignore seeding failures for safety
+            }
+
+            // Dynamic step definitions from FormSchemaJson
+            try
+            {
+                var formSteps = Medical.Helpers.FormSchemaStepsHelper.ReadSteps(configForm.FormSchemaJson)
+                    .Where(s => s.IsActive)
+                    .OrderBy(s => s.Order)
+                    .ToList();
+                ViewBag.FormSteps = formSteps;
+            }
+            catch
+            {
+                ViewBag.FormSteps = new List<Medical.Models.FormStep>();
+            }
+
+            // Dynamic fields from AdditionalFieldsJson (hide deleted/inactive)
+            var allFields = (configForm.AdditionalFields ?? new List<AdditionalField>())
                 .Where(f => f.IsActive && !f.IsDeleted)
                 .OrderBy(f => f.Step)
                 .ThenBy(f => f.DisplayOrder)
                 .ToList();
 
-            // Separate steps from regular fields
-            var steps = allFields.Where(f => f.FieldType == "step").ToList();
-            var regularFields = allFields.Where(f => f.FieldType != "step").ToList();
-
-            ViewBag.AdditionalFields = regularFields;
-            ViewBag.CustomSteps = steps; // Pass steps to view
+            ViewBag.AdditionalFields = allFields.Where(f => f.FieldType != "step").ToList();
 
             var model = new ViewPublicForm();
-            // Load labels from config
             model.FieldLabels = configForm.FieldLabels;
 
             return View(model);
@@ -77,22 +110,28 @@ namespace Medical.Controllers
         // POST: Create Multi-step Form - FIXED
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(ViewPublicForm model)
+        public async Task<IActionResult> Create(PublicFormSubmissionDto dto)
         {
+            ViewPublicForm model = new ViewPublicForm();
+
             try
             {
                 if (ModelState.IsValid)
                 {
-                    model.ViewPublicFormId = Guid.NewGuid();
-                    model.CreatedAt = DateTime.UtcNow;
-                    model.IsDeleted = false;
+                    model = new ViewPublicForm
+                    {
+                        ViewPublicFormId = Guid.NewGuid(),
+                        CreatedAt = DateTime.UtcNow,
+                        IsDeleted = false,
+                        IsConfig = false
+                    };
 
                     // Get additional fields configuration
                     var configForm = GetOrCreateConfigForm();
                     var additionalFields = configForm.AdditionalFields ?? new List<AdditionalField>();
 
-                    // Collect additional field values from form submission
-                    var additionalFieldsData = new Dictionary<string, AdditionalFieldValue>();
+                    // Collect all field values from form submission
+                    var formData = new Dictionary<string, string>();
 
                     // Only process non-step fields
                     foreach (var field in additionalFields.Where(f => f.FieldType != "step"))
@@ -103,23 +142,14 @@ namespace Medical.Controllers
                         if (Request.Form.ContainsKey(formKey))
                         {
                             var value = Request.Form[formKey].ToString();
-                            additionalFieldsData[fieldName] = new AdditionalFieldValue
-                            {
-                                FieldId = field.FieldId,
-                                FieldName = fieldName,
-                                DisplayName = field.DisplayName,
-                                FieldType = field.FieldType,
-                                Value = value,
-                                Step = field.Step
-                            };
+                            formData[fieldName] = value;
                         }
                     }
 
-                    // Store additional fields data as JSON
-                    if (additionalFieldsData.Any())
-                    {
-                        model.AdditionalFieldsJson = JsonConvert.SerializeObject(additionalFieldsData);
-                    }
+                    // Explicit DTO -> entity mapping
+                    // (dto is the public contract; entity is constructed server-side)
+                    dto.FormData = formData;
+                    model.FormData = dto.FormData;
 
                     _context.ViewPublicForm.Add(model);
                     await _context.SaveChangesAsync();
@@ -142,7 +172,14 @@ namespace Medical.Controllers
                 .ToList() ?? new List<AdditionalField>();
             
             ViewBag.AdditionalFields = allFields.Where(f => f.FieldType != "step").ToList();
-            ViewBag.CustomSteps = allFields.Where(f => f.FieldType == "step").ToList();
+            
+            // Load steps from FormSchemaJson
+            var formSteps = FormSchemaStepsHelper.ReadSteps(reloadConfigForm.FormSchemaJson)
+                .Where(s => s.IsActive)
+                .OrderBy(s => s.Order)
+                .ToList();
+            ViewBag.FormSteps = formSteps;
+            ViewBag.FormSchemaJson = reloadConfigForm.FormSchemaJson ?? string.Empty;
 
             return View(model);
         }
@@ -150,29 +187,35 @@ namespace Medical.Controllers
         // POST: FillForm - Handle form submission from user
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> FillForm(ViewPublicForm model)
+        public async Task<IActionResult> FillForm(PublicFormSubmissionDto dto)
         {
+            ViewPublicForm model = new ViewPublicForm();
+
             try
             {
                 if (ModelState.IsValid)
                 {
-                    model.ViewPublicFormId = Guid.NewGuid();
-                    model.CreatedAt = DateTime.UtcNow;
-                    model.IsDeleted = false;
+                    model = new ViewPublicForm
+                    {
+                        ViewPublicFormId = Guid.NewGuid(),
+                        CreatedAt = DateTime.UtcNow,
+                        IsDeleted = false,
+                        IsConfig = false
+                    };
 
                     // Get additional fields configuration
                     var configForm = GetOrCreateConfigForm();
                     var additionalFields = configForm.AdditionalFields ?? new List<AdditionalField>();
 
-                    // Collect additional field values from form submission
-                    var additionalFieldsData = new Dictionary<string, AdditionalFieldValue>();
+                    // Collect all field values from form submission
+                    var formData = new Dictionary<string, string>();
 
-                    // Only process non-step fields
+                    // FillForm.cshtml posts inputs with name == FieldName
                     foreach (var field in additionalFields.Where(f => f.FieldType != "step"))
                     {
                         var fieldName = field.FieldName;
-                        var formKey = fieldName;
-                        if (Request.Form.TryGetValue(formKey, out var values))
+
+                        if (Request.Form.TryGetValue(fieldName, out var values))
                         {
                             string value;
                             if (string.Equals(field.FieldType, "checkbox", StringComparison.OrdinalIgnoreCase))
@@ -183,23 +226,13 @@ namespace Medical.Controllers
                             {
                                 value = values.Count > 0 ? values[0] : string.Empty;
                             }
-                            additionalFieldsData[fieldName] = new AdditionalFieldValue
-                            {
-                                FieldId = field.FieldId,
-                                FieldName = fieldName,
-                                DisplayName = field.DisplayName,
-                                FieldType = field.FieldType,
-                                Value = value,
-                                Step = field.Step
-                            };
+                            formData[fieldName] = value;
                         }
                     }
 
-                    // Store additional fields data as JSON
-                    if (additionalFieldsData.Any())
-                    {
-                        model.AdditionalFieldsJson = JsonConvert.SerializeObject(additionalFieldsData);
-                    }
+                    // Explicit DTO -> entity mapping
+                    dto.FormData = formData;
+                    model.FormData = dto.FormData;
 
                     _context.ViewPublicForm.Add(model);
                     await _context.SaveChangesAsync();
@@ -213,16 +246,34 @@ namespace Medical.Controllers
                 ModelState.AddModelError("", $"Error submitting form: {ex.Message}");
             }
 
-            // If validation fails, return the form
+            // If validation fails, return FillForm with same dynamic config
+            ViewBag.ActiveMenu = "PublicForm";
+
             var reloadConfigForm = GetOrCreateConfigForm();
+
+            try
+            {
+                var formSteps = Medical.Helpers.FormSchemaStepsHelper.ReadSteps(reloadConfigForm.FormSchemaJson)
+                    .Where(s => s.IsActive)
+                    .OrderBy(s => s.Order)
+                    .ToList();
+                ViewBag.FormSteps = formSteps;
+            }
+            catch
+            {
+                ViewBag.FormSteps = new List<Medical.Models.FormStep>();
+            }
+
             var allFields = reloadConfigForm.AdditionalFields?
                 .Where(f => !f.IsDeleted && f.IsActive)
                 .OrderBy(f => f.Step)
                 .ThenBy(f => f.DisplayOrder)
                 .ToList() ?? new List<AdditionalField>();
-            
+
             ViewBag.AdditionalFields = allFields.Where(f => f.FieldType != "step").ToList();
-            ViewBag.CustomSteps = allFields.Where(f => f.FieldType == "step").ToList();
+
+            // keep labels (if used in view)
+            model.FieldLabels = reloadConfigForm.FieldLabels;
 
             return View(model);
         }
@@ -493,40 +544,27 @@ namespace Medical.Controllers
                 }
 
                 var configForm = GetOrCreateConfigForm();
-                var existingFields = configForm.AdditionalFields ?? new List<AdditionalField>();
 
-                // Generate a unique field name for the step
-                var stepFieldName = $"step_{request.StepName.ToLower().Replace(" ", "_")}_{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+                // Read existing steps from FormSchemaJson
+                var steps = Medical.Helpers.FormSchemaStepsHelper.ReadSteps(configForm.FormSchemaJson).ToList();
 
-                // Create a special additional field to represent the step
-                var stepField = new AdditionalField
+                // Create new step
+                var newStep = new FormStep
                 {
-                    FieldId = Guid.NewGuid(),
-                    DisplayName = request.StepName.Trim(),
-                    FieldName = stepFieldName,
-                    FieldType = "step", // Special type for steps
-                    Step = request.StepOrder,
-                    Placeholder = request.StepDescription,
-                    IsRequired = false,
-                    IsConditional = false,
-                    CreatedAt = DateTime.UtcNow,
-                    CreatedBy = User.Identity?.Name ?? "System",
-                    IsActive = true,
-                    IsDeleted = false,
-                    DisplayOrder = existingFields.Count + 1,
-                    OptionsJson = request.StepIcon // Store icon in OptionsJson
+                    Id = Guid.NewGuid(),
+                    Name = request.StepName.Trim(),
+                    Order = request.StepOrder,
+                    IsActive = true
                 };
 
-                existingFields.Add(stepField);
+                steps.Add(newStep);
 
-                // Reorder steps to maintain sequence
-                var steps = existingFields.Where(f => f.FieldType == "step").OrderBy(f => f.Step).ToList();
-                for (int i = 0; i < steps.Count; i++)
-                {
-                    steps[i].Step = i + 4; // Steps start from 4 (after static steps)
-                }
+                // Normalize ordering (1..n)
+                steps = steps.OrderBy(s => s.Order).ToList();
+                for (var i = 0; i < steps.Count; i++)
+                    steps[i].Order = i + 1;
 
-                configForm.AdditionalFields = existingFields;
+                configForm.FormSchemaJson = Medical.Helpers.FormSchemaStepsHelper.WriteSteps(configForm.FormSchemaJson, steps);
                 configForm.FormVersion++;
                 configForm.CreatedAt = DateTime.UtcNow;
 
@@ -536,14 +574,14 @@ namespace Medical.Controllers
                 return Json(new
                 {
                     success = true,
-                    message = $"Step '{stepField.DisplayName}' added successfully!",
+                    message = $"Step '{newStep.Name}' added successfully!",
                     step = new
                     {
-                        stepId = stepField.FieldId,
-                        stepName = stepField.DisplayName,
-                        stepDescription = stepField.Placeholder,
-                        stepIcon = stepField.OptionsJson,
-                        stepOrder = stepField.Step
+                        stepId = newStep.Id,
+                        stepName = newStep.Name,
+                        stepDescription = request.StepDescription,
+                        stepIcon = request.StepIcon,
+                        stepOrder = newStep.Order
                     }
                 });
             }
@@ -561,36 +599,34 @@ namespace Medical.Controllers
             try
             {
                 var configForm = GetOrCreateConfigForm();
+
+                // Read steps from FormSchemaJson
+                var steps = Medical.Helpers.FormSchemaStepsHelper.ReadSteps(configForm.FormSchemaJson).ToList();
+
+                var target = steps.FirstOrDefault(s => s.Id == request.StepId);
+
+                // Back-compat: if not found, ignore (old logic used AdditionalFields)
+                if (target == null)
+                    return Json(new { success = false, message = "Step not found" });
+
+                var deletedOrder = target.Order;
+
+                // Remove from steps
+                steps = steps.Where(s => s.Id != target.Id).OrderBy(s => s.Order).ToList();
+                for (var i = 0; i < steps.Count; i++)
+                    steps[i].Order = i + 1;
+
+                configForm.FormSchemaJson = Medical.Helpers.FormSchemaStepsHelper.WriteSteps(configForm.FormSchemaJson, steps);
+
+                // Remove fields in that step (from AdditionalFields)
                 var existingFields = configForm.AdditionalFields ?? new List<AdditionalField>();
+                existingFields = existingFields.Where(f => f.Step != deletedOrder).ToList();
 
-                var stepField = existingFields.FirstOrDefault(f => f.FieldId == request.StepId && f.FieldType == "step");
-                if (stepField == null) return Json(new { success = false, message = "Step not found" });
-
-                var deletedStepNumber = stepField.Step;
-
-                // Permanently remove the step and its fields
-                existingFields = existingFields
-                    .Where(f => !(f.FieldType == "step" && f.FieldId == request.StepId) && f.Step != deletedStepNumber)
-                    .ToList();
-
-                // Renumber remaining steps sequentially starting from 4
-                var remainingSteps = existingFields
-                    .Where(f => f.FieldType == "step")
-                    .OrderBy(f => f.Step)
-                    .ToList();
-
-                for (int i = 0; i < remainingSteps.Count; i++)
+                // Renumber remaining fields' steps
+                foreach (var f in existingFields.Where(f => f.Step > deletedOrder))
                 {
-                    var newStepNumber = i + 4;
-                    var oldStepNumber = remainingSteps[i].Step;
-                    remainingSteps[i].Step = newStepNumber;
-
-                    // Update all fields in this step to the new step number
-                    foreach (var field in existingFields.Where(f => f.Step == oldStepNumber && f.FieldType != "step"))
-                    {
-                        field.Step = newStepNumber;
-                        field.UpdatedAt = DateTime.UtcNow;
-                    }
+                    f.Step -= 1;
+                    f.UpdatedAt = DateTime.UtcNow;
                 }
 
                 configForm.AdditionalFields = existingFields;
@@ -619,34 +655,24 @@ namespace Medical.Controllers
                     return Json(new { success = false, message = "Step name is required" });
 
                 var configForm = GetOrCreateConfigForm();
-                var existingFields = configForm.AdditionalFields ?? new List<AdditionalField>();
 
-                var stepField = existingFields.FirstOrDefault(f => f.FieldId == request.StepId && f.FieldType == "step");
-                if (stepField == null) return Json(new { success = false, message = "Step not found" });
+                var steps = Medical.Helpers.FormSchemaStepsHelper.ReadSteps(configForm.FormSchemaJson).ToList();
+                var st = steps.FirstOrDefault(s => s.Id == request.StepId);
 
-                // Update properties
-                stepField.DisplayName = request.StepName.Trim();
-                stepField.Placeholder = string.IsNullOrWhiteSpace(request.StepDescription) ? null : request.StepDescription.Trim();
-                stepField.OptionsJson = request.StepIcon; // icon
+                if (st == null)
+                    return Json(new { success = false, message = "Step not found" });
 
-                // Handle optional reordering
-                if (request.StepOrder.HasValue && request.StepOrder.Value >= 4)
-                {
-                    var desiredOrder = request.StepOrder.Value;
-                    stepField.Step = desiredOrder;
+                st.Name = request.StepName.Trim();
 
-                    // Reorder all steps sequentially based on their Step value
-                    var orderedSteps = existingFields.Where(f => f.FieldType == "step").OrderBy(f => f.Step).ToList();
-                    for (int i = 0; i < orderedSteps.Count; i++)
-                    {
-                        orderedSteps[i].Step = i + 4;
-                    }
+                if (request.StepOrder.HasValue && request.StepOrder.Value > 0)
+                    st.Order = request.StepOrder.Value;
 
-                    // Normalize field step numbers to match updated step numbers
-                    var stepMap = orderedSteps.ToDictionary(s => s.FieldId, s => s.Step);
-                }
+                // Normalize orders
+                steps = steps.OrderBy(s => s.Order).ToList();
+                for (var i = 0; i < steps.Count; i++)
+                    steps[i].Order = i + 1;
 
-                configForm.AdditionalFields = existingFields;
+                configForm.FormSchemaJson = Medical.Helpers.FormSchemaStepsHelper.WriteSteps(configForm.FormSchemaJson, steps);
                 configForm.FormVersion++;
                 configForm.CreatedAt = DateTime.UtcNow;
 
@@ -661,32 +687,169 @@ namespace Medical.Controllers
             }
         }
 
+        // AJAX: Toggle step active status (enable/disable)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ToggleStepActive([FromBody] ToggleStepRequest request)
+        {
+            try
+            {
+                var configForm = GetOrCreateConfigForm();
+                
+                var result = FormSchemaStepsHelper.ToggleStepActive(
+                    configForm.FormSchemaJson, 
+                    request.StepId, 
+                    request.IsActive
+                );
+                
+                if (!result.Success)
+                    return Json(new { success = false, message = result.Message });
+
+                configForm.FormSchemaJson = result.UpdatedJson;
+                configForm.FormVersion++;
+                configForm.CreatedAt = DateTime.UtcNow;
+
+                _context.ViewPublicForm.Update(configForm);
+                await _context.SaveChangesAsync();
+
+                return Json(new { success = true, message = result.Message });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error: {ex.Message}" });
+            }
+        }
+
+        // Get disabled steps for recovery
+        [HttpGet]
+        public IActionResult GetDisabledSteps()
+        {
+            try
+            {
+                var configForm = GetOrCreateConfigForm();
+                var disabledSteps = FormSchemaStepsHelper.GetDisabledSteps(configForm.FormSchemaJson);
+                
+                return Json(new { 
+                    success = true, 
+                    steps = disabledSteps.Select(s => new { 
+                        id = s.Id, 
+                        name = s.Name, 
+                        order = s.Order 
+                    }) 
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        // DIAGNOSTIC: Check database configuration
+        [HttpGet]
+        public IActionResult DiagnoseFormConfig()
+        {
+            try
+            {
+                var configForm = GetOrCreateConfigForm();
+                
+                // Parse steps
+                var steps = FormSchemaStepsHelper.ReadSteps(configForm.FormSchemaJson)
+                    .OrderBy(s => s.Order)
+                    .ToList();
+                
+                // Parse fields
+                var fields = configForm.AdditionalFields?
+                    .Where(f => !f.IsDeleted && f.IsActive)
+                    .OrderBy(f => f.Step)
+                    .ThenBy(f => f.DisplayOrder)
+                    .ToList() ?? new List<AdditionalField>();
+                
+                return Json(new
+                {
+                    success = true,
+                    configId = configForm.ViewPublicFormId,
+                    formVersion = configForm.FormVersion,
+                    createdAt = configForm.CreatedAt,
+                    totalSteps = steps.Count,
+                    activeSteps = steps.Count(s => s.IsActive),
+                    steps = steps.Select(s => new
+                    {
+                        id = s.Id,
+                        name = s.Name,
+                        order = s.Order,
+                        isActive = s.IsActive,
+                        fieldCount = fields.Count(f => f.Step == s.Order)
+                    }),
+                    totalFields = fields.Count,
+                    fields = fields.Select(f => new
+                    {
+                        fieldId = f.FieldId,
+                        displayName = f.DisplayName,
+                        fieldName = f.FieldName,
+                        fieldType = f.FieldType,
+                        step = f.Step,
+                        isRequired = f.IsRequired,
+                        isConditional = f.IsConditional,
+                        placeholder = f.Placeholder
+                    })
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new
+                {
+                    success = false,
+                    error = ex.Message,
+                    stackTrace = ex.StackTrace
+                });
+            }
+        }
+
         // Dashboard - Statistics & Overview
         public async Task<IActionResult> Dashboard()
         {
             ViewBag.ActiveMenu = "Dashboard";
 
-            var allForms = await _context.ViewPublicForm
-                .Where(f => f.FullName != null && f.IsDeleted != true)
+            var baseQuery = _context.ViewPublicForm
+                .Where(f => f.IsConfig != true && f.IsDeleted != true);
+
+            var totalSubmissions = await baseQuery.CountAsync();
+            var today = DateTime.UtcNow.Date;
+            var tomorrow = today.AddDays(1);
+
+            var todaySubmissions = await baseQuery
+                .Where(f => f.CreatedAt >= today && f.CreatedAt < tomorrow)
+                .CountAsync();
+
+            var lastSubmission = await baseQuery
                 .OrderByDescending(f => f.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            var recentSubmissions = await baseQuery
+                .OrderByDescending(f => f.CreatedAt)
+                .Take(5)
+                .ToListAsync();
+
+            var startDate = DateTime.UtcNow.Date.AddDays(-6);
+
+            var last7DaysAgg = await baseQuery
+                .Where(f => f.CreatedAt >= startDate)
+                .GroupBy(f => f.CreatedAt.Date)
+                .Select(g => new Medical.Models.ViewModels.DailySubmissionStat
+                {
+                    Date = g.Key,
+                    Count = g.Count()
+                })
+                .OrderBy(s => s.Date)
                 .ToListAsync();
 
             var viewModel = new Medical.Models.ViewModels.DashboardViewModel
             {
-                TotalSubmissions = allForms.Count,
-                TodaySubmissions = allForms.Count(f => f.CreatedAt.Date == DateTime.UtcNow.Date),
-                LastSubmission = allForms.FirstOrDefault(),
-                RecentSubmissions = allForms.Take(5).ToList(),
-                Last7DaysStats = allForms
-                    .Where(f => f.CreatedAt >= DateTime.UtcNow.AddDays(-7))
-                    .GroupBy(f => f.CreatedAt.Date)
-                    .Select(g => new Medical.Models.ViewModels.DailySubmissionStat
-                    {
-                        Date = g.Key,
-                        Count = g.Count()
-                    })
-                    .OrderBy(s => s.Date)
-                    .ToList()
+                TotalSubmissions = totalSubmissions,
+                TodaySubmissions = todaySubmissions,
+                LastSubmission = lastSubmission,
+                RecentSubmissions = recentSubmissions,
+                Last7DaysStats = last7DaysAgg
             };
 
             // Fill in missing days for the chart
@@ -703,10 +866,14 @@ namespace Medical.Controllers
         }
 
         // Get all form submissions
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int page = 1, int pageSize = 25)
         {
             ViewBag.ActiveMenu = "ViewForms";
-            
+
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 25;
+            if (pageSize > 100) pageSize = 100;
+
             // Get the field configuration to retrieve step and field names
             var configForm = GetOrCreateConfigForm();
             var allFields = configForm.AdditionalFields?
@@ -719,10 +886,20 @@ namespace Medical.Controllers
             ViewBag.ConfigFields = allFields.Where(f => f.FieldType != "step").ToList();
             ViewBag.CustomSteps = allFields.Where(f => f.FieldType == "step").ToList();
             
-            var submissions = await _context.ViewPublicForm
-                .Where(f => f.FullName != null && f.IsDeleted != true) // Only actual submissions and not deleted
-                .OrderByDescending(f => f.CreatedAt)
+            var query = _context.ViewPublicForm
+                .Where(f => f.IsConfig != true && f.IsDeleted != true)
+                .OrderByDescending(f => f.CreatedAt);
+
+            var totalCount = await query.CountAsync();
+            var submissions = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
+
+            ViewBag.Page = page;
+            ViewBag.PageSize = pageSize;
+            ViewBag.TotalCount = totalCount;
+
             return View(submissions);
         }
 
@@ -736,33 +913,69 @@ namespace Medical.Controllers
 
             if (form == null || form.IsDeleted == true) return NotFound();
 
-            // Parse additional fields data
-            if (!string.IsNullOrEmpty(form.AdditionalFieldsJson))
-            {
-                try
-                {
-                    var additionalData = JsonConvert.DeserializeObject<Dictionary<string, AdditionalFieldValue>>(form.AdditionalFieldsJson);
-                    ViewBag.AdditionalFieldsData = additionalData;
-                }
-                catch
-                {
-                    ViewBag.AdditionalFieldsData = new Dictionary<string, AdditionalFieldValue>();
-                }
-            }
-            else
-            {
-                ViewBag.AdditionalFieldsData = new Dictionary<string, AdditionalFieldValue>();
-            }
-
-            // Get custom steps configuration
+            // Get form configuration to map field metadata
             var configForm = GetOrCreateConfigForm();
-            var allFields = configForm.AdditionalFields?
+            var configFields = configForm.AdditionalFields?
                 .Where(f => !f.IsDeleted && f.IsActive)
                 .OrderBy(f => f.Step)
                 .ThenBy(f => f.DisplayOrder)
                 .ToList() ?? new List<AdditionalField>();
+
+            // Parse FormDataJson (submitted data) and convert to AdditionalFieldValue format
+            var additionalFieldsData = new Dictionary<string, AdditionalFieldValue>();
+
+            if (!string.IsNullOrEmpty(form.FormDataJson))
+            {
+                try
+                {
+                    var formData = JsonConvert.DeserializeObject<Dictionary<string, string>>(form.FormDataJson);
+                    
+                    if (formData != null)
+                    {
+                        foreach (var kvp in formData)
+                        {
+                            // Find the field configuration
+                            var fieldConfig = configFields.FirstOrDefault(f => f.FieldName == kvp.Key);
+                            
+                            if (fieldConfig != null)
+                            {
+                                additionalFieldsData[kvp.Key] = new AdditionalFieldValue
+                                {
+                                    FieldId = fieldConfig.FieldId,
+                                    FieldName = fieldConfig.FieldName,
+                                    DisplayName = fieldConfig.DisplayName,
+                                    FieldType = fieldConfig.FieldType,
+                                    Value = kvp.Value,
+                                    Step = fieldConfig.Step
+                                };
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error parsing FormDataJson: {ex.Message}");
+                    additionalFieldsData = new Dictionary<string, AdditionalFieldValue>();
+                }
+            }
+
+            ViewBag.AdditionalFieldsData = additionalFieldsData;
+
+            // Get FormSteps from FormSchemaJson
+            try
+            {
+                var formSteps = Medical.Helpers.FormSchemaStepsHelper.ReadSteps(configForm.FormSchemaJson)
+                    .Where(s => s.IsActive)
+                    .OrderBy(s => s.Order)
+                    .ToList();
+                ViewBag.FormSteps = formSteps;
+            }
+            catch
+            {
+                ViewBag.FormSteps = new List<Medical.Models.FormStep>();
+            }
             
-            ViewBag.CustomSteps = allFields.Where(f => f.FieldType == "step").ToList();
+            ViewBag.CustomSteps = configFields.Where(f => f.FieldType == "step").ToList();
 
             ViewBag.ActiveMenu = "ViewForms";
             return View(form);
@@ -802,22 +1015,39 @@ namespace Medical.Controllers
         private ViewPublicForm GetOrCreateConfigForm()
         {
             var configForm = _context.ViewPublicForm
-                .Where(f => f.FullName == null)
+                .Where(f => f.IsConfig == true)
                 .OrderByDescending(f => f.CreatedAt)
                 .FirstOrDefault();
 
             if (configForm == null)
             {
+                // Seed default steps if no config exists
+                var seeded = FormSchemaStepsHelper.EnsureSeededDefaultSteps(null);
+                
                 configForm = new ViewPublicForm
                 {
                     ViewPublicFormId = Guid.NewGuid(),
                     CreatedAt = DateTime.UtcNow,
                     FormVersion = 1,
                     AdditionalFieldsJson = "[]",
+                    FormSchemaJson = seeded.UpdatedJson,
+                    IsConfig = true,
                     IsDeleted = false
                 };
                 _context.ViewPublicForm.Add(configForm);
                 _context.SaveChanges();
+            }
+            else
+            {
+                // Always check for and restore missing default steps
+                var check = FormSchemaStepsHelper.EnsureSeededDefaultSteps(configForm.FormSchemaJson);
+                if (check.UpdatedJson != configForm.FormSchemaJson)
+                {
+                    configForm.FormSchemaJson = check.UpdatedJson;
+                    configForm.FormVersion++;
+                    _context.ViewPublicForm.Update(configForm);
+                    _context.SaveChanges();
+                }
             }
 
             return configForm;
@@ -831,7 +1061,7 @@ namespace Medical.Controllers
             try
             {
                 var configs = _context.ViewPublicForm
-                    .Where(f => f.FullName == null)
+                    .Where(f => f.IsConfig == true)
                     .ToList();
 
                 var updated = 0;
@@ -867,6 +1097,33 @@ namespace Medical.Controllers
                 if (updated > 0) _context.SaveChanges();
 
                 return Json(new { success = true, updated });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        // Maintenance: Re-seed default steps if missing
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ReseedDefaultSteps()
+        {
+            try
+            {
+                var configForm = GetOrCreateConfigForm();
+                
+                // Force re-seed of default steps
+                var seeded = FormSchemaStepsHelper.EnsureSeededDefaultSteps(null);
+                
+                configForm.FormSchemaJson = seeded.UpdatedJson;
+                configForm.FormVersion++;
+                configForm.CreatedAt = DateTime.UtcNow;
+                
+                _context.ViewPublicForm.Update(configForm);
+                _context.SaveChanges();
+
+                return Json(new { success = true, message = "Default steps re-seeded successfully!", steps = seeded.Steps.Count });
             }
             catch (Exception ex)
             {
@@ -949,6 +1206,18 @@ namespace Medical.Controllers
     public class DeleteStepRequest
     {
         public Guid StepId { get; set; }
+    }
+
+    public class ToggleStepRequest
+    {
+        public Guid StepId { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    // DTO for public form submissions (controller accepts this DTO, transforms to entity)
+    public class PublicFormSubmissionDto
+    {
+        public Dictionary<string, string> FormData { get; set; } = new Dictionary<string, string>();
     }
 
     // Model for storing additional field values

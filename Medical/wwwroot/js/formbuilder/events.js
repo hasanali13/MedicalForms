@@ -236,10 +236,11 @@ async function updateSelectedField() {
     IsConditional: document.getElementById('fpConditional').checked
   };
 
-  if (updatedData.FieldType === 'select') {
+  // Handle options for both select and radio fields
+  if (updatedData.FieldType === 'select' || updatedData.FieldType === 'radio') {
     const options = getOptionsFromEditor();
     if (options.length === 0) {
-      showToast('At least one option is required for dropdown fields', 'error');
+      showToast(`At least one option is required for ${updatedData.FieldType === 'radio' ? 'radio' : 'dropdown'} fields`, 'error');
       return;
     }
     updatedData.OptionsJson = JSON.stringify(options);
@@ -588,7 +589,7 @@ function bindFormBuilderEvents() {
   const fpType = document.getElementById('fpType');
   if (fpType) {
     fpType.addEventListener('change', function () {
-      const isSelect = this.value === 'select';
+      const isSelect = this.value === 'select' || this.value === 'radio';
       toggleOptionsEditor(isSelect, selectedFieldData);
     });
   }

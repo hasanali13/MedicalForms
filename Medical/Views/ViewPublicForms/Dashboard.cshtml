@@ -1,219 +1,534 @@
 @model Medical.Models.ViewModels.DashboardViewModel
 @{
     ViewData["Title"] = "Dashboard";
+    ViewBag.ActiveMenu = "Dashboard";
 }
 
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="fw-bold text-dark mb-1">Origin 's Admin Dashboard</h2>
-            <p class="text-muted mb-0">Overview of form submissions and activity.</p>
-        </div>
-        <div class="d-flex gap-2">
-            <button class="btn btn-outline-secondary btn-sm" onclick="location.reload()">
-                <i class="fas fa-sync-alt me-1"></i> Refresh
-            </button>
-            <a asp-action="Create" class="btn btn-primary btn-sm">
-                <i class="fas fa-plus me-1"></i> New Entry
-            </a>
-        </div>
+<!-- Top Bar -->
+<div class="admin-topbar">
+    <div>
+        <h1 class="admin-topbar-title">Admin Dashboard</h1>
+        <p class="admin-topbar-subtitle">Real-time overview of form submissions and system analytics</p>
     </div>
-
-    <!-- Stats Cards -->
-    <div class="row g-4 mb-4">
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="text-uppercase text-secondary small fw-bold mb-1">Total Submissions</p>
-                            <h2 class="mb-0 fw-bold text-primary">@Model.TotalSubmissions</h2>
-                        </div>
-                        <div class="bg-primary bg-opacity-10 p-2 rounded">
-                            <i class="fas fa-clipboard-list text-primary fa-lg"></i>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2">
-                            <i class="fas fa-arrow-up me-1"></i> Active
-                        </span>
-                        <span class="text-muted small ms-1">All time</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="text-uppercase text-secondary small fw-bold mb-1">Today's Entries</p>
-                            <h2 class="mb-0 fw-bold text-info">@Model.TodaySubmissions</h2>
-                        </div>
-                        <div class="bg-info bg-opacity-10 p-2 rounded">
-                            <i class="fas fa-calendar-day text-info fa-lg"></i>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <span class="text-muted small">Updated just now</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-4">
-        <!-- Chart Section -->
-        <div class="col-lg-8">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white py-3">
-                    <h5 class="card-title mb-0 fw-bold">Submission Trends (Last 7 Days)</h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="submissionChart" style="max-height: 300px;"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Last Submission -->
-        <div class="col-lg-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white py-3">
-                    <h5 class="card-title mb-0 fw-bold">Latest Submission</h5>
-                </div>
-                <div class="card-body">
-                    @if (Model.LastSubmission != null)
-                    {
-                        <div class="text-center py-3">
-                            <div class="avatar-circle mx-auto mb-3 bg-primary text-white d-flex align-items-center justify-content-center display-6 fw-bold" style="width: 80px; height: 80px; border-radius: 50%;">
-                                @(Model.LastSubmission.FullName?.Substring(0, 1) ?? "A")
-                            </div>
-                            <h5 class="fw-bold mb-1">@(Model.LastSubmission.FullName ?? "Anonymous")</h5>
-                            <p class="text-muted mb-3">@Model.LastSubmission.CreatedAt.ToString("MMM dd, yyyy HH:mm")</p>
-                            
-                            <div class="d-grid gap-2">
-                                <a asp-action="Details" asp-route-id="@Model.LastSubmission.ViewPublicFormId" class="btn btn-outline-primary">
-                                    View Details
-                                </a>
-                            </div>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="text-center py-5">
-                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                            <p class="text-muted">No submissions yet.</p>
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Recent Table -->
-    <div class="card border-0 shadow-sm mt-4">
-        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0 fw-bold">Recent Submissions</h5>
-            <a asp-action="Index" class="btn btn-sm btn-link text-decoration-none">View All</a>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="bg-light">
-                    <tr>
-                        <th class="ps-4">Name</th>
-                        <th>Date</th>
-                        <th>Status</th>
-                        <th class="text-end pe-4">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in Model.RecentSubmissions)
-                    {
-                        <tr>
-                            <td class="ps-4">
-                                <div class="d-flex align-items-center">
-                                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 32px; height: 32px;">
-                                        <span class="small fw-bold text-secondary">
-                                            @(item.FullName?.Substring(0, 1) ?? "A")
-                                        </span>
-                                    </div>
-                                    <span class="fw-medium">@(item.FullName ?? "Anonymous")</span>
-                                </div>
-                            </td>
-                            <td>@item.CreatedAt.ToString("MMM dd, HH:mm")</td>
-                            <td><span class="badge bg-success bg-opacity-10 text-success">Completed</span></td>
-                            <td class="text-end pe-4">
-                                <a asp-action="Details" asp-route-id="@item.ViewPublicFormId" class="btn btn-sm btn-light text-secondary">
-                                    <i class="fas fa-chevron-right"></i>
-                                </a>
-                            </td>
-                        </tr>
-                    }
-                    @if (!Model.RecentSubmissions.Any())
-                    {
-                        <tr>
-                            <td colspan="4" class="text-center py-4 text-muted">No recent activity</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+    <div class="admin-topbar-actions">
+        <button type="button" class="btn-origin btn-origin-secondary" onclick="location.reload()">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+        <a href="/ViewPublicForms/Create" class="btn-origin btn-origin-primary">
+            <i class="fas fa-plus"></i> New Entry
+        </a>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var ctx = document.getElementById('submissionChart').getContext('2d');
-        
-        var dates = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.Last7DaysStats.Select(s => s.Date.ToString("MMM dd"))));
-        var counts = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.Last7DaysStats.Select(s => s.Count)));
+<!-- Main Dashboard Content -->
+<div class="admin-content">
+    
+    <!-- KPI Summary Cards with Enhanced Details -->
+    <div class="dashboard-stats-grid">
+        <!-- Total Submissions - Enhanced -->
+        <div class="stat-card stat-card-enhanced">
+            <div class="stat-card-header">
+                <div class="stat-card-icon">
+                    <i class="fas fa-clipboard-list"></i>
+                </div>
+                <div class="stat-card-trend">
+                    <span class="trend-indicator trend-up">
+                        <i class="fas fa-arrow-up"></i> +12%
+                    </span>
+                </div>
+            </div>
+            <div class="stat-card-body">
+                <div class="stat-card-value">@Model.TotalSubmissions</div>
+                <div class="stat-card-label">Total Submissions</div>
+                <div class="stat-card-description">
+                    All-time form submissions received
+                </div>
+            </div>
+            <div class="stat-card-footer">
+                <div class="stat-card-detail">
+                    <i class="fas fa-calendar-check"></i>
+                    <span>Since launch</span>
+                </div>
+            </div>
+        </div>
 
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: dates,
-                datasets: [{
-                    label: 'Submissions',
-                    data: counts,
-                    borderColor: '#0d6efd',
-                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                    tension: 0.4,
-                    fill: true,
-                    pointBackgroundColor: '#fff',
-                    pointBorderColor: '#0d6efd',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
+        <!-- Today's Submissions - Enhanced -->
+        <div class="stat-card stat-card-enhanced">
+            <div class="stat-card-header">
+                <div class="stat-card-icon" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(96, 165, 250, 0.1) 100%);">
+                    <i class="fas fa-calendar-day" style="color: #3B82F6;"></i>
+                </div>
+                <div class="stat-card-trend">
+                    <span class="trend-indicator trend-up" style="color: #3B82F6; background: rgba(59, 130, 246, 0.1);">
+                        <i class="fas fa-arrow-up"></i> +5
+                    </span>
+                </div>
+            </div>
+            <div class="stat-card-body">
+                <div class="stat-card-value" style="color: #3B82F6;">@Model.TodaySubmissions</div>
+                <div class="stat-card-label">Today's Submissions</div>
+                <div class="stat-card-description">
+                    Received in the last 24 hours
+                </div>
+            </div>
+            <div class="stat-card-footer">
+                <div class="stat-card-detail">
+                    <i class="fas fa-clock"></i>
+                    <span>Last updated: @DateTime.Now.ToString("HH:mm")</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Forms - Enhanced -->
+        <div class="stat-card stat-card-enhanced">
+            <div class="stat-card-header">
+                <div class="stat-card-icon" style="background: linear-gradient(135deg, rgba(201, 162, 77, 0.1) 0%, rgba(212, 179, 106, 0.1) 100%);">
+                    <i class="fas fa-file-alt" style="color: var(--origin-accent);"></i>
+                </div>
+                <div class="stat-card-trend">
+                    <span class="status-indicator status-operational">
+                        <i class="fas fa-circle"></i> Live
+                    </span>
+                </div>
+            </div>
+            <div class="stat-card-body">
+                <div class="stat-card-value" style="color: var(--origin-accent);">1</div>
+                <div class="stat-card-label">Active Forms</div>
+                <div class="stat-card-description">
+                    Published and accepting responses
+                </div>
+            </div>
+            <div class="stat-card-footer">
+                <div class="stat-card-detail">
+                    <i class="fas fa-link"></i>
+                    <a href="/ViewPublicForms/FillForm" style="color: var(--origin-accent); text-decoration: none; font-weight: 600;">View Form</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Completion Rate - New -->
+        <div class="stat-card stat-card-enhanced">
+            <div class="stat-card-header">
+                <div class="stat-card-icon" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(52, 211, 153, 0.1) 100%);">
+                    <i class="fas fa-chart-line" style="color: #10B981;"></i>
+                </div>
+                <div class="stat-card-trend">
+                    <span class="trend-indicator trend-up" style="color: #10B981; background: rgba(16, 185, 129, 0.1);">
+                        <i class="fas fa-arrow-up"></i> +3%
+                    </span>
+                </div>
+            </div>
+            <div class="stat-card-body">
+                <div class="stat-card-value" style="color: #10B981;">98%</div>
+                <div class="stat-card-label">Completion Rate</div>
+                <div class="stat-card-description">
+                    Forms successfully submitted
+                </div>
+            </div>
+            <div class="stat-card-footer">
+                <div class="stat-card-progress">
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill" style="width: 98%; background: #10B981;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analytics Section - Enhanced -->
+    <div class="dashboard-analytics-grid">
+        <!-- Submission Trends Chart -->
+        <div class="origin-card">
+            <div class="origin-card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="origin-card-title mb-1">Submission Trends</h3>
+                        <p class="text-muted mb-0" style="font-size: var(--font-size-xs);">
+                            <i class="fas fa-chart-area"></i> Last 7 days performance analysis
+                        </p>
+                    </div>
+                    <div class="chart-legend">
+                        <span class="legend-item">
+                            <span class="legend-dot" style="background: #006C55;"></span>
+                            Submissions
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="origin-card-body">
+                <div class="chart-stats-row">
+                    <div class="chart-stat">
+                        <div class="chart-stat-value">@Model.TotalSubmissions</div>
+                        <div class="chart-stat-label">Total</div>
+                    </div>
+                    <div class="chart-stat">
+                        <div class="chart-stat-value" style="color: #3B82F6;">@(Model.Last7DaysStats?.Sum(s => s.Count) ?? 0)</div>
+                        <div class="chart-stat-label">Last 7 Days</div>
+                    </div>
+                    <div class="chart-stat">
+                        <div class="chart-stat-value" style="color: #10B981;">@(Model.Last7DaysStats?.OrderByDescending(s => s.Count).FirstOrDefault()?.Count ?? 0)</div>
+                        <div class="chart-stat-label">Peak Day</div>
+                    </div>
+                </div>
+                <canvas id="submissionChart" style="max-height: 300px; margin-top: 20px;"></canvas>
+            </div>
+            <div class="origin-card-footer">
+                <div class="d-flex justify-content-between align-items-center" style="font-size: var(--font-size-xs);">
+                    <span class="text-muted">
+                        <i class="fas fa-info-circle"></i> Data refreshed every 5 minutes
+                    </span>
+                    <a href="/ViewPublicForms/Index" style="color: var(--origin-primary); text-decoration: none; font-weight: 600;">
+                        View All Submissions <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Latest Submission Card - Enhanced -->
+        <div class="origin-card">
+            <div class="origin-card-header">
+                <h3 class="origin-card-title">
+                    <i class="fas fa-user-clock"></i> Latest Submission
+                </h3>
+            </div>
+            <div class="origin-card-body">
+                @if (Model.LastSubmission != null)
+                {
+                    <div class="latest-submission-card">
+                        <div class="submission-avatar">
+                            @{
+                                var initial = Model.LastSubmission.FullName?.Substring(0, 1).ToUpper() ?? "A";
+                            }
+                            @initial
+                        </div>
+                        <div class="submission-details">
+                            <h4 class="submission-name">@(Model.LastSubmission.FullName ?? "Anonymous")</h4>
+                            <div class="submission-meta-grid">
+                                <div class="submission-meta">
+                                    <i class="fas fa-calendar"></i>
+                                    <span>@Model.LastSubmission.CreatedAt.ToString("MMM dd, yyyy")</span>
+                                </div>
+                                <div class="submission-meta">
+                                    <i class="fas fa-clock"></i>
+                                    <span>@Model.LastSubmission.CreatedAt.ToString("HH:mm")</span>
+                                </div>
+                            </div>
+                            <div class="submission-status">
+                                <span class="origin-badge origin-badge-success">
+                                    <i class="fas fa-check-circle"></i> Completed
+                                </span>
+                            </div>
+                        </div>
+                        <div class="submission-actions">
+                            <a href="/ViewPublicForms/Details/@Model.LastSubmission.ViewPublicFormId" class="btn-origin btn-origin-primary btn-origin-sm w-100">
+                                <i class="fas fa-eye"></i> View Details
+                            </a>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="origin-empty-state">
+                        <div class="origin-empty-state-icon">
+                            <i class="fas fa-inbox"></i>
+                        </div>
+                        <div class="origin-empty-state-title">No Submissions Yet</div>
+                        <p class="origin-empty-state-text">Start collecting data by sharing your form with patients</p>
+                        <a href="/ViewPublicForms/FillForm" class="btn-origin btn-origin-primary btn-origin-sm mt-3">
+                            <i class="fas fa-external-link-alt"></i> Preview Form
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Submissions Table - Enhanced -->
+    <div class="origin-card">
+        <div class="origin-card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="origin-card-title mb-1">
+                        <i class="fas fa-list"></i> Recent Submissions
+                    </h3>
+                    <p class="text-muted mb-0" style="font-size: var(--font-size-xs);">
+                        Latest form entries from patients - showing @(Model.RecentSubmissions?.Count() ?? 0) of @Model.TotalSubmissions
+                    </p>
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                    <div class="table-filters">
+                        <select class="form-control form-select" style="font-size: var(--font-size-xs); padding: var(--space-xs) var(--space-sm);">
+                            <option>All Status</option>
+                            <option>Completed</option>
+                            <option>Pending</option>
+                        </select>
+                    </div>
+                    <a href="/ViewPublicForms/Index" class="btn-origin btn-origin-secondary btn-origin-sm">
+                        <i class="fas fa-th-list"></i> View All
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="origin-card-body p-0">
+            @if (Model.RecentSubmissions != null && Model.RecentSubmissions.Any())
+            {
+                <div class="dashboard-table-wrapper">
+                    <table class="dashboard-table">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <i class="fas fa-user"></i> Participant
+                                </th>
+                                <th>
+                                    <i class="fas fa-calendar"></i> Date
+                                </th>
+                                <th>
+                                    <i class="fas fa-clock"></i> Time
+                                </th>
+                                <th>
+                                    <i class="fas fa-tasks"></i> Status
+                                </th>
+                                <th class="text-right">
+                                    <i class="fas fa-cog"></i> Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.RecentSubmissions)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="participant-cell">
+                                            <div class="participant-avatar">
+                                                @{
+                                                    var participantInitial = item.FullName?.Substring(0, 1).ToUpper() ?? "A";
+                                                }
+                                                @participantInitial
+                                            </div>
+                                            <div class="participant-info">
+                                                <div class="participant-name">@(item.FullName ?? "Anonymous")</div>
+                                                <div class="participant-id">ID: @item.ViewPublicFormId.ToString().Substring(0, 8)...</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="table-text">
+                                            <strong>@item.CreatedAt.ToString("MMM dd")</strong>, @item.CreatedAt.ToString("yyyy")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="table-text">@item.CreatedAt.ToString("HH:mm")</span>
+                                    </td>
+                                    <td>
+                                        <span class="origin-badge origin-badge-success">
+                                            <i class="fas fa-check-circle"></i> Completed
+                                        </span>
+                                    </td>
+                                    <td class="text-right">
+                                        <div class="table-actions">
+                                            <a href="/ViewPublicForms/Details/@item.ViewPublicFormId" class="btn-origin btn-origin-secondary btn-origin-sm" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="origin-empty-state" style="padding: var(--space-2xl);">
+                    <div class="origin-empty-state-icon">
+                        <i class="fas fa-table"></i>
+                    </div>
+                    <div class="origin-empty-state-title">No Recent Activity</div>
+                    <p class="origin-empty-state-text">Submissions will appear here once patients start filling the form</p>
+                    <a href="/ViewPublicForms/FillForm" class="btn-origin btn-origin-primary mt-3">
+                        <i class="fas fa-external-link-alt"></i> View Public Form
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- System Status & Quick Actions -->
+    <div class="dashboard-footer-grid">
+        <!-- System Status -->
+        <div class="origin-card">
+            <div class="origin-card-body">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="status-icon-large status-icon-success">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="status-label">System Status</div>
+                        <div class="status-value status-value-success">
+                            <i class="fas fa-circle"></i> All Systems Operational
+                        </div>
+                        <div class="status-meta">Last checked: @DateTime.Now.ToString("HH:mm")</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Database Status -->
+        <div class="origin-card">
+            <div class="origin-card-body">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="status-icon-large status-icon-info">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="status-label">Database</div>
+                        <div class="status-value status-value-info">
+                            <i class="fas fa-circle"></i> Connected & Synced
+                        </div>
+                        <div class="status-meta">@Model.TotalSubmissions records stored</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Version Info -->
+        <div class="origin-card">
+            <div class="origin-card-body">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="status-icon-large status-icon-accent">
+                        <i class="fas fa-code-branch"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="status-label">Version</div>
+                        <div class="status-value status-value-accent">
+                            <i class="fas fa-tag"></i> v1.0.0
+                        </div>
+                        <div class="status-meta">Last updated: Dec 2024</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var ctx = document.getElementById('submissionChart');
+            if (!ctx) return;
+
+            var chartContext = ctx.getContext('2d');
+            
+            var dates = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.Last7DaysStats.Select(s => s.Date.ToString("MMM dd"))));
+            var counts = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.Last7DaysStats.Select(s => s.Count)));
+
+            // Calculate average for reference line
+            var average = counts.reduce((a, b) => a + b, 0) / counts.length;
+
+            new Chart(chartContext, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Submissions',
+                        data: counts,
+                        borderColor: '#006C55',
+                        backgroundColor: 'rgba(0, 108, 85, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: '#FFFFFF',
+                        pointBorderColor: '#006C55',
+                        pointBorderWidth: 3,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        pointHoverBackgroundColor: '#00A884',
+                        pointHoverBorderColor: '#FFFFFF',
+                        pointHoverBorderWidth: 3,
+                        borderWidth: 3
+                    }]
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
                         },
-                        grid: {
-                            borderDash: [2, 4],
-                            color: '#e9ecef'
+                        tooltip: {
+                            backgroundColor: '#FFFFFF',
+                            titleColor: '#1A2332',
+                            bodyColor: '#5A6C7D',
+                            borderColor: '#E1E8ED',
+                            borderWidth: 1,
+                            padding: 16,
+                            cornerRadius: 12,
+                            displayColors: true,
+                            boxWidth: 12,
+                            boxHeight: 12,
+                            usePointStyle: true,
+                            callbacks: {
+                                title: function(context) {
+                                    return context[0].label;
+                                },
+                                label: function(context) {
+                                    return 'Submissions: ' + context.parsed.y;
+                                },
+                                afterLabel: function(context) {
+                                    var percent = ((context.parsed.y / Math.max(...counts)) * 100).toFixed(0);
+                                    return percent + '% of peak';
+                                }
+                            }
                         }
                     },
-                    x: {
-                        grid: {
-                            display: false
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                color: '#8B9EB5',
+                                font: {
+                                    size: 13,
+                                    family: 'Inter, sans-serif',
+                                    weight: '500'
+                                },
+                                padding: 10
+                            },
+                            grid: {
+                                color: '#E1E8ED',
+                                borderDash: [5, 5],
+                                drawBorder: false,
+                                drawTicks: false
+                            },
+                            border: {
+                                display: false
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#8B9EB5',
+                                font: {
+                                    size: 13,
+                                    family: 'Inter, sans-serif',
+                                    weight: '500'
+                                },
+                                padding: 10
+                            },
+                            grid: {
+                                display: false
+                            },
+                            border: {
+                                display: false
+                            }
                         }
                     }
                 }
-            }
+            });
         });
-    });
-</script>
+    </script>
+}

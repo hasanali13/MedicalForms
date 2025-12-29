@@ -7,81 +7,95 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>@ViewData["Title"] - Origin Software's FormBuilder</title>
+    <title>@ViewData["Title"] - Origin Software's Medical Forms</title>
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
-    <link rel="stylesheet" href="~/css/global.css" asp-append-version="true" />
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <!-- Origin Software's Theme -->
+    <link rel="stylesheet" href="~/css/admin-theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/form-builder.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/submissions.css" asp-append-version="true" />
 </head>
 
 <body>
+    <!-- Admin Layout -->
+    <div class="admin-layout">
+        
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <!-- Brand Header -->
+            <div class="admin-sidebar-brand">
+                <h4>Origin Software's</h4>
+                <small>Medical Forms System</small>
+            </div>
 
-    <!-- SIDEBAR -->
-    <!-- SIDEBAR -->
-    <div class="sidebar d-flex flex-column justify-content-between">
+            <!-- Navigation -->
+            <nav class="admin-sidebar-nav">
+                <a href="/ViewPublicForms/Dashboard" 
+                   class="admin-nav-item @(active == "Dashboard" ? "active" : "")">
+                    <i class="fas fa-chart-line nav-icon"></i>
+                    Dashboard
+                </a>
 
-        <!-- TOP MENU ITEMS -->
-        <div>
-            <h4 class="fw-bold px-2 mb-2" style="color: var(--primary-600)">Origin Software's FormBuilder</h4>
+            <a href="/ViewPublicForms/Create" 
+                   class="admin-nav-item @(active == "FormBuilder" ? "active" : "")">
+                    <i class="fas fa-layer-group nav-icon"></i>
+                    Form Builder
+                </a>
 
-            <a asp-controller="ViewPublicForms" asp-action="Dashboard" class="@(active == "Dashboard" ? "active" : "")">
-                Dashboard
-            </a>
 
-            <a href="/FormOverview" class="@(active == "FormOverview" ? "active" : "")">
-                Form Overview
-            </a>
+                <a href="/ViewPublicForms/Index" 
+                   class="admin-nav-item @(active == "Submissions" || active == "ViewForms" ? "active" : "")">
+                    <i class="fas fa-inbox nav-icon"></i>
+                    Submissions
+                </a>
 
-            <a href="/ViewPublicForms/Create" class="@(active == "FormBuilder" ? "active" : "")">
-                Form Builder
-            </a>
+                <!-- Divider -->
+                <div style="height: 1px; background: var(--origin-border-light); margin: var(--space-md) var(--space-lg);"></div>
 
-            <a href="/FieldEditor" class="@(active == "FieldEditor" ? "active" : "")">
-                Field Editor
-            </a>
+                <a href="/ViewPublicForms/FillForm" 
+                   class="admin-nav-item @(active == "PublicForm" ? "active" : "")">
+                    <i class="fas fa-external-link-alt nav-icon"></i>
+                    View Public Form
+                </a>
+            </nav>
 
-            <a href="/LogicBuilder" class="@(active == "LogicBuilder" ? "active" : "")">
-                Logic Builder
-            </a>
+            <!-- Footer -->
+            <div style="padding: var(--space-lg); text-align: center; font-size: var(--font-size-xs); color: var(--origin-text-muted); border-top: 1px solid var(--origin-border-light); margin-top: auto;">
+                <div style="margin-bottom: var(--space-xs);">© @DateTime.Now.Year</div>
+                <div style="font-weight: var(--font-weight-semibold); color: var(--origin-primary);">Origin Software's</div>
+                <div style="margin-top: var(--space-xs);">All rights reserved.</div>
+            </div>
+        </aside>
 
-            <a href="/ViewPublicForms/Index" class="@(active == "Submissions" ? "active" : "")">
-                Submissions
-            </a>
-        </div>
-
-        <!-- BOTTOM MENU ITEM -->
-        <div class="mt-auto mb-4">
-            <a href="/ViewPublicForms/FillForm" class="@(active == "PublicForm" ? "active" : "")" style="font-size:15px;">
-                📄 View Public Form
-            </a>
-        </div>
-        <div class="px-4 pb-3 text-center" style="font-size:12px; color:#98A2B3;">
-            © @DateTime.Now.Year <strong>Origin Softwares</strong><br />
-            All rights reserved.
-        </div>
-
+        <!-- Main Content Area -->
+        <main class="admin-main">
+            @RenderBody()
+        </main>
     </div>
 
-
-
-
-    <!-- MAIN CONTENT -->
-    <div class="content-area">
-        @RenderBody()
-        @RenderSection("Scripts", required: false)
-    </div>
-
+    <!-- Toast Container -->
     <div id="toastContainer"></div>
 
+    <!-- Scripts -->
     <script src="~/js/toasts.js" asp-append-version="true"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            var successMsg = '@TempData["SuccessMessage"]'
+            var successMsg = '@TempData["SuccessMessage"]';
             var errorMsg = '@TempData["ErrorMessage"]';
             if (window.__initTempDataToasts) {
                 window.__initTempDataToasts(successMsg, errorMsg);
             }
         });
     </script>
+    
+    @RenderSection("Scripts", required: false)
 </body>
 </html>

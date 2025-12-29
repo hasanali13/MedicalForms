@@ -627,6 +627,9 @@
     window.switchStep = wrapped;
   }
 
+  // Expose rendering function globally for external hydration
+  window.renderGroupsForStep = renderGroupsForStep;
+
   // Expose nothing; but keep an internal reference safe for debugging if needed
   chainSwitchStepWrapper();
 
@@ -641,5 +644,14 @@
       }
     });
   });
+
+  // PERSISTENCE FIX: Also expose store functions for external hydration
+  window.__formBuilderGroups = {
+    getStore: getStore,
+    setStore: setStore,
+    getStepState: getStepState,
+    ensureStepState: ensureStepState,
+    renderGroupsForStep: renderGroupsForStep
+  };
 
 })();

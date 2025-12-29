@@ -5,6 +5,13 @@
 
     var additionalFields = ViewBag.AdditionalFields as List<Medical.Models.AdditionalField> ?? new List<Medical.Models.AdditionalField>();
     var customSteps = ViewBag.CustomSteps as List<Medical.Models.AdditionalField> ?? new List<Medical.Models.AdditionalField>();
+    
+    // IMPORTANT: ReadAllSteps (not filtered by IsActive) to show disabled steps in Form Builder
+    var formSchemaJson = ViewBag.FormSchemaJson as string ?? string.Empty;
+    var allSteps = Medical.Helpers.FormSchemaStepsHelper.ReadSteps(formSchemaJson);
+    var formSteps = allSteps.OrderBy(s => s.Order).ToList();
+    
+    ViewBag.FormSteps = formSteps; // This now includes disabled steps
 }
 
 <!-- TOP HEADER -->
@@ -35,251 +42,145 @@
             <!-- Top Container: Steps -->
             <div class="left-panel-container">
                 <h6 class="text-muted mb-3">FORM STEPS</h6>
-                <div id="step1Tab" class="step-item active" data-step="1">
-                    <div class="step-pill">
-                        <div>
-                            <div class="step-title">Step 1</div>
-                            <div class="step-subtitle">Personal Information</div>
+                
+                <!-- Scrollable container for steps -->
+                <div class="steps-scroll-container">
+                    @if (formSteps != null && formSteps.Count > 0)
+                    {
+                        @foreach (var step in formSteps)
+                        {
+                            var isDisabled = !step.IsActive;
+                            var stepClass = step.Order == 1 && step.IsActive ? "active" : "";
+                            var disabledClass = isDisabled ? "step-disabled" : "";
+                            
+                            <div id="step@(step.Order)Tab" class="step-item @stepClass @disabledClass" data-step="@step.Order" data-step-id="@step.Id" data-is-active="@step.IsActive.ToString().ToLower()">
+                                <div class="step-pill" onclick="@(isDisabled ? "event.stopPropagation()" : $"switchStep({step.Order})")">
+                                    <div class="flex-grow-1">
+                                        <div class="step-title">
+                                            @step.Name
+                                            @if (isDisabled)
+                                            {
+                                                <span class="badge bg-secondary ms-2" style="font-size:10px; vertical-align: middle;">DISABLED</span>
+                                            }
+                                        </div>
+                                        <div class="step-subtitle">
+                                            <span class="step-count" id="step@(step.Order)Count">0 fields</span>
+                                        </div>
+                                    </div>
+                                    <div class="step-header-actions" onclick="event.stopPropagation()">
+                                        @if (isDisabled)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-success p-1" 
+                                                    onclick="toggleStepStatus('@step.Id', true)" 
+                                                    title="Enable Step">
+                                                👁️
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-sm btn-link text-primary p-1" 
+                                                    onclick="openEditStepModal('@step.Id', @step.Order, '@step.Name')" 
+                                                    title="Rename Step">
+                                                ✏️
+                                            </button>
+                                            @if (formSteps.Count(s => s.IsActive) > 1)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-warning p-1" 
+                                                        onclick="confirmDisableStep('@step.Id', '@step.Name')" 
+                                                        title="Disable Step">
+                                                    🚫
+                                                </button>
+                                            }
+                                            @if (formSteps.Count > 1)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-link text-danger p-1" 
+                                                        onclick="deleteStepHandler('@step.Id')" 
+                                                        title="Delete Step">
+                                                    🗑️
+                                                </button>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div id="step1Tab" class="step-item active" data-step="1">
+                            <div class="step-pill">
+                                <div>
+                                    <div class="step-title">Step 1</div>
+                                    <div class="step-subtitle">Default Step</div>
+                                </div>
+                                <div class="step-count" id="step1Count">0 fields</div>
+                            </div>
                         </div>
-                        <div class="step-count" id="step1Count">0 fields</div>
-                    </div>
-                </div>
+                    }
 
-                <div id="step2Tab" class="step-item" data-step="2">
-                    <div class="step-pill">
-                        <div>
-                            <div class="step-title">Step 2</div>
-                            <div class="step-subtitle">Health Details</div>
-                        </div>
-                        <div class="step-count" id="step2Count">0 fields</div>
-                    </div>
+                    <!-- Custom Steps will be rendered here dynamically -->
+                    <div id="customStepsContainer"></div>
                 </div>
-
-                <div id="step3Tab" class="step-item" data-step="3">
-                    <div class="step-pill">
-                        <div>
-                            <div class="step-title">Step 3</div>
-                            <div class="step-subtitle">Emergency Contact</div>
-                        </div>
-                        <div class="step-count" id="step3Count">0 fields</div>
-                    </div>
-                </div>
-
-                <!-- Custom Steps will be rendered here dynamically -->
-                <div id="customStepsContainer"></div>
             </div>
 
             <!-- Bottom Container: Fields -->
             <div class="left-panel-container fields-section">
-                <h6>FIELDS IN <span id="currentStepName">PERSONAL INFORMATION</span></h6>
+                <h6>FIELDS IN <span id="currentStepName">STEP 1</span></h6>
 
                 <div class="fields-list" id="fieldsList">
-                    <!-- Render original fields for step 1 -->
-                    <div class="field-item" data-field-type="static" data-field-key="FullName">
-                        <span class="drag-handle" aria-hidden="true"></span>
-                        <span>Full Name</span>
-                    </div>
-                    <div class="field-item" data-field-type="static" data-field-key="Age">
-                        <span class="drag-handle" aria-hidden="true"></span>
-                        <span>Age</span>
-                    </div>
-                    <div class="field-item" data-field-type="static" data-field-key="Gender">
-                        <span class="drag-handle" aria-hidden="true"></span>
-                        <span>Gender</span>
-                    </div>
-                    <div class="field-item" data-field-type="static" data-field-key="DateOfBirth">
-                        <span class="drag-handle" aria-hidden="true"></span>
-                        <span>Date of Birth</span>
-                    </div>
-
-                    <!-- Additional dynamic fields for step 1 -->
-                    @foreach (var field in additionalFields.Where(f => f.Step == 1))
-                    {
-                        <div class="field-item" data-field-id="@field.FieldId">
-                            <span class="drag-handle" aria-hidden="true"></span>
-                            <span>@field.DisplayName</span>
-                        </div>
-                    }
+                    <!-- All fields will be rendered dynamically by JavaScript -->
                 </div>
             </div>
         </div>
 
         <!-- MIDDLE FORM PANEL -->
         <div class="form-panel">
-            <!-- STEP 1 -->
-            <div id="step1" class="form-step">
-                <h4>Personal Information</h4><hr />
+            @if (formSteps != null && formSteps.Count > 0)
+            {
+                @foreach (var step in formSteps)
+                {
+                    var isFirstStep = step.Order == 1;
+                    var isLastStep = step.Order == formSteps.Max(s => s.Order);
+                    
+                    <div id="step@(step.Order)" class="form-step @(step.Order != 1 ? "hidden" : "")">
+                        <h4 class="step-title-text">@step.Name</h4><hr />
 
-                <!-- Original Fields -->
-                <div class="mb-3">
-                    <label asp-for="FullName" class="form-label"></label>
-                    <input asp-for="FullName" class="form-control" />
-                </div>
-                <div class="mb-3">
-                    <label asp-for="Age" class="form-label"></label>
-                    <input asp-for="Age" class="form-control" />
-                </div>
-                <div class="mb-3">
-                    <label asp-for="Gender" class="form-label"></label>
-                    <select asp-for="Gender" class="form-control form-select">
-                        <option value="">Select</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                        <option value="Prefer not to say">Prefer not to say</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label asp-for="DateOfBirth" class="form-label"></label>
-                    <input asp-for="DateOfBirth" type="date" class="form-control" />
-                </div>
+                        <!-- Additional Fields for this step -->
+                        <div id="step@(step.Order)AdditionalFields">
+                            @foreach (var field in additionalFields.Where(f => f.Step == step.Order))
+                            {
+                                <div class="additional-field-container" data-field-id="@field.FieldId">
+                                    <div class="field-actions">
+                                        <button type="button" class="delete-field-btn" data-field-id="@field.FieldId">
+                                            🗑️
+                                        </button>
+                                    </div>
 
-                <!-- Additional Fields for Step 1 -->
-                <div id="step1AdditionalFields">
-                    @foreach (var field in additionalFields.Where(f => f.Step == 1))
-                    {
-                        <div class="additional-field-container" data-field-id="@field.FieldId">
-                            <div class="field-actions">
-                                <button type="button" class="delete-field-btn" data-field-id="@field.FieldId">
-                                    🗑️
-                                </button>
-                            </div>
+                                    <label class="form-label">
+                                        @field.DisplayName
+                                        @if (field.IsRequired)
+                                        {
+                                            <span class="text-danger">*</span>
+                                        }
+                                        <span class="field-type-badge">@field.FieldType</span>
+                                    </label>
 
-                            <label class="form-label">
-                                @field.DisplayName
-                                @if (field.IsRequired)
-                                {
-                                    <span class="text-danger">*</span>
-                                }
-                                <span class="field-type-badge">@field.FieldType</span>
-                            </label>
-
-                            @await Html.PartialAsync("_AdditionalFieldInput", field)
+                                    @await Html.PartialAsync("_AdditionalFieldInput", field)
+                                </div>
+                            }
                         </div>
-                    }
-                </div>
 
-                <button type="button" class="btn btn-primary" data-next-step="2">Next</button>
-            </div>
-
-            <!-- STEP 2 -->
-            <div id="step2" class="form-step hidden">
-                <h4>Health Details</h4><hr />
-
-                <!-- Original Fields -->
-                <div class="mb-3">
-                    <label asp-for="HasAllergies" class="form-label"></label>
-                    <select asp-for="HasAllergies" class="form-control form-select" id="HasAllergiesSelect">
-                        <option value="">Select</option>
-                        <option value="true">Yes</option>
-                        <option value="false">No</option>
-                    </select>
+                        <!-- Navigation buttons will be added dynamically by JavaScript -->
+                    </div>
+                }
+            }
+            else
+            {
+                <div id="step1" class="form-step">
+                    <h4>Default Step</h4><hr />
+                    <p>No steps configured yet.</p>
                 </div>
-
-                <div class="mb-3" id="allergyDescriptionGroup">
-                    <label asp-for="AllergyDescription" class="form-label"></label>
-                    <input asp-for="AllergyDescription" class="form-control" />
-                </div>
-                <div class="mb-3">
-                    <label asp-for="CurrentMedication" class="form-label"></label>
-                    <input asp-for="CurrentMedication" class="form-control" />
-                </div>
-                <div class="mb-3">
-                    <label asp-for="HeightCm" class="form-label"></label>
-                    <input asp-for="HeightCm" class="form-control" />
-                </div>
-                <div class="mb-3">
-                    <label asp-for="WeightKg" class="form-label"></label>
-                    <input asp-for="WeightKg" class="form-control" />
-                </div>
-
-                <!-- Additional Fields for Step 2 -->
-                <div id="step2AdditionalFields">
-                    @foreach (var field in additionalFields.Where(f => f.Step == 2))
-                    {
-                        <div class="additional-field-container" data-field-id="@field.FieldId">
-                            <div class="field-actions">
-                                <button type="button" class="delete-field-btn" data-field-id="@field.FieldId">
-                                    🗑️
-                                </button>
-                            </div>
-
-                            <label class="form-label">
-                                @field.DisplayName
-                                @if (field.IsRequired)
-                                {
-                                    <span class="text-danger">*</span>
-                                }
-                                <span class="field-type-badge">@field.FieldType</span>
-                            </label>
-
-                            @await Html.PartialAsync("_AdditionalFieldInput", field)
-                        </div>
-                    }
-                </div>
-
-                <button type="button" class="btn btn-secondary" data-prev-step="1">Back</button>
-                <button type="button" class="btn btn-primary" data-next-step="3">Next</button>
-            </div>
-
-            <!-- STEP 3 -->
-            <div id="step3" class="form-step hidden">
-                <h4>Emergency Contact</h4><hr />
-
-                <!-- Original Fields -->
-                <div class="mb-3" data-field-key="ContactName">
-                    <label asp-for="ContactName" class="form-label">@Model.FieldLabels["ContactName"]</label>
-                    <input asp-for="ContactName" class="form-control" />
-                </div>
-                <div class="mb-3" data-field-key="Relationship">
-                    <label asp-for="Relationship" class="form-label">@Model.FieldLabels["Relationship"]</label>
-                    <input asp-for="Relationship" class="form-control" />
-                </div>
-                <div class="mb-3" data-field-key="PhoneNumber">
-                    <label asp-for="PhoneNumber" class="form-label">@Model.FieldLabels["PhoneNumber"]</label>
-                    <input asp-for="PhoneNumber" class="form-control" />
-                </div>
-                <div class="mb-3" data-field-key="HasAlternativeContact">
-                    <label asp-for="HasAlternativeContact" class="form-label">@Model.FieldLabels["HasAlternativeContact"]</label>
-                    <input asp-for="HasAlternativeContact" class="form-control" />
-                </div>
-                <div class="mb-3" data-field-key="AltContactName">
-                    <label asp-for="AltContactName" class="form-label">@Model.FieldLabels["AltContactName"]</label>
-                    <input asp-for="AltContactName" class="form-control" />
-                </div>
-                <div class="mb-3" data-field-key="AltPhoneNumber">
-                    <label asp-for="AltPhoneNumber" class="form-label">@Model.FieldLabels["AltPhoneNumber"]</label>
-                    <input asp-for="AltPhoneNumber" class="form-control" placeholder="Alternative phone" />
-                </div>
-
-                <!-- Additional Fields for Step 3 -->
-                <div id="step3AdditionalFields">
-                    @foreach (var field in additionalFields.Where(f => f.Step == 3))
-                    {
-                        <div class="additional-field-container" data-field-id="@field.FieldId">
-                            <div class="field-actions">
-                                <button type="button" class="delete-field-btn" data-field-id="@field.FieldId">
-                                    🗑️
-                                </button>
-                            </div>
-
-                            <label class="form-label">
-                                @field.DisplayName
-                                @if (field.IsRequired)
-                                {
-                                    <span class="text-danger">*</span>
-                                }
-                                <span class="field-type-badge">@field.FieldType</span>
-                            </label>
-
-                            @await Html.PartialAsync("_AdditionalFieldInput", field)
-                        </div>
-                    }
-                </div>
-
-                <button type="button" class="btn btn-secondary" data-prev-step="2">Back</button>
-                <button type="button" class="btn btn-primary" data-next-step="4" id="step3NextButton">Next</button>
-            </div>
+            }
 
             <!-- Custom Steps Forms will be rendered here dynamically -->
             <div id="customStepsForms"></div>
@@ -306,15 +207,24 @@
                     <option value="tel">Phone</option>
                     <option value="textarea">Text Area</option>
                     <option value="select">Dropdown</option>
+                    <option value="radio">Radio</option>
                     <option value="checkbox">Checkbox</option>
                 </select>
             </div>
             <div class="fp-group">
                 <label>Step</label>
                 <select id="fpStep" class="fp-select">
-                    <option value="1">Step 1</option>
-                    <option value="2">Step 2</option>
-                    <option value="3">Step 3</option>
+                    @if (formSteps != null && formSteps.Count > 0)
+                    {
+                        @foreach (var step in formSteps)
+                        {
+                            <option value="@step.Order">Step @step.Order: @step.Name</option>
+                        }
+                    }
+                    else
+                    {
+                        <option value="1">Step 1: Default Step</option>
+                    }
                 </select>
             </div>
             <div class="fp-group">
@@ -410,6 +320,7 @@
                     <option value="tel">Phone</option>
                     <option value="textarea">Text Area</option>
                     <option value="select">Dropdown Select</option>
+                    <option value="radio">Radio Buttons</option>
                     <option value="checkbox">Checkbox</option>
                 </select>
             </div>
@@ -418,9 +329,17 @@
             <div class="form-group">
                 <label class="form-label">Step</label>
                 <select id="fieldStepSelect" class="form-control-modal">
-                    <option value="1">Step 1: Personal Information</option>
-                    <option value="2">Step 2: Health Details</option>
-                    <option value="3">Step 3: Emergency Contact</option>
+                    @if (formSteps != null && formSteps.Count > 0)
+                    {
+                        @foreach (var step in formSteps)
+                        {
+                            <option value="@step.Order">Step @step.Order: @step.Name</option>
+                        }
+                    }
+                    else
+                    {
+                        <option value="1">Step 1: Default Step</option>
+                    }
                 </select>
             </div>
 
@@ -496,10 +415,18 @@
             <!-- Position -->
             <div class="form-group">
                 <label class="form-label">Insert After Step</label>
-                <select id="stepPositionSelect" class="form-control-modal" id="stepPosition">
-                    <option value="3">After Step 3 (Emergency Contact)</option>
-                    <option value="2">After Step 2 (Health Details)</option>
-                    <option value="1">After Step 1 (Personal Information)</option>
+                <select id="stepPositionSelect" class="form-control-modal">
+                    @if (formSteps != null && formSteps.Count > 0)
+                    {
+                        @foreach (var step in formSteps)
+                        {
+                            <option value="@step.Order">After Step @step.Order (@step.Name)</option>
+                        }
+                    }
+                    else
+                    {
+                        <option value="3">After Step 3 (Default)</option>
+                    }
                 </select>
             </div>
         </div>
@@ -522,6 +449,7 @@
                 addCustomStep: '@Url.Action("AddCustomStep", "ViewPublicForms")',
                 updateCustomStep: '@Url.Action("UpdateCustomStep", "ViewPublicForms")',
                 deleteCustomStep: '@Url.Action("DeleteCustomStep", "ViewPublicForms")',
+                toggleStepActive: '@Url.Action("ToggleStepActive", "ViewPublicForms")',
                 updateFieldLabel: '/ViewPublicForms/UpdateFieldLabel'
             },
             additionalFieldsData: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
@@ -530,21 +458,116 @@
             customStepsData: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
                 customSteps.Select(s => new { s.FieldId, s.DisplayName, s.Step, s.Placeholder, s.OptionsJson })
             )),
-            originalFields: {
-                1: ["Full Name","Age","Gender","Date of Birth"],
-                2: ["Has Allergies","Allergy Description","Current Medication","Height (cm)","Weight (kg)"],
-                3: ["Contact Name","Relationship","Phone Number","Has Alternative Contact","Alt Contact Name","Alt Phone Number"]
-            }
+            formStepsData: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                formSteps.Select(s => new { s.Id, s.Name, s.Order, s.IsActive })
+            ))
         };
+
+        // ===========================
+        // STEP ENABLE/DISABLE FUNCTIONS
+        // ===========================
+        async function confirmDisableStep(stepId, stepName) {
+            if (confirm(`⚠️ WARNING: This step will be hidden from public forms.\n\nStep: "${stepName}"\n\nPatients will NOT see this step when filling the form.\n\nContinue?`)) {
+                await toggleStepStatus(stepId, false);
+            }
+        }
+
+        async function toggleStepStatus(stepId, isActive) {
+            try {
+                const response = await fetch(window.__formBuilderData.urls.toggleStepActive, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': getToken()
+                    },
+                    body: JSON.stringify({ StepId: stepId, IsActive: isActive })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showToast(result.message, 'error');
+                }
+            } catch (error) {
+                showToast('Error updating step status: ' + error.message, 'error');
+            }
+        }
     </script>
 
     <script src="~/js/formbuilder.bundle.js" asp-append-version="true"></script>
+    <script src="~/js/formbuilder/options-editor.js" asp-append-version="true"></script>
     <script src="~/js/formbuilder/groups.js" asp-append-version="true"></script>
+    <script src="~/js/formbuilder/step-editor.js" asp-append-version="true"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            if (window.bindFormBuilderEvents) window.bindFormBuilderEvents();
-            if (window.initFormBuilderPage) window.initFormBuilderPage();
+            // OPTIMIZED: Single initialization sequence without console logging
+            
+            // Bind events first
+            if (window.bindFormBuilderEvents) {
+                window.bindFormBuilderEvents();
+            }
+            
+            // Initialize page state
+            if (window.initFormBuilderPage) {
+                window.initFormBuilderPage();
+            }
+            
+            // Render groups for active steps (deferred for performance)
+            requestAnimationFrame(() => {
+                const formStepsData = window.__formBuilderData?.formStepsData || [];
+                if (formStepsData.length > 0) {
+                    formStepsData.forEach(step => {
+                        if (step.IsActive && window.renderGroupsForStep) {
+                            try {
+                                window.renderGroupsForStep(step.Order);
+                            } catch (e) {
+                                // Silent fail
+                            }
+                        }
+                    });
+                }
+                
+                // Update field counts (deferred)
+                if (window.updateCounts) {
+                    window.updateCounts();
+                }
+                
+                // Update navigation buttons
+                if (window.updateNavigationButtons) {
+                    window.updateNavigationButtons();
+                }
+                
+                // Switch to first active step
+                if (formStepsData.length > 0) {
+                    const activeSteps = formStepsData.filter(s => s.IsActive !== false).sort((a, b) => a.Order - b.Order);
+                    if (activeSteps.length > 0 && window.switchStep) {
+                        window.switchStep(activeSteps[0].Order);
+                        
+                        // Re-render groups for first step (final pass)
+                        setTimeout(() => {
+                            if (window.renderGroupsForStep) {
+                                window.renderGroupsForStep(activeSteps[0].Order);
+                            }
+                        }, 100);
+                    }
+                }
+            });
+        });
+        
+        // Update counts on field changes
+        document.addEventListener('fieldAdded', function() {
+            if (window.updateCounts) window.updateCounts();
+        });
+        
+        document.addEventListener('fieldDeleted', function() {
+            if (window.updateCounts) window.updateCounts();
+        });
+        
+        document.addEventListener('fieldUpdated', function() {
+            if (window.updateCounts) window.updateCounts();
         });
     </script>
 }

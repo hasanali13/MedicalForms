@@ -12,7 +12,28 @@ namespace Medical.Models
         [Key]
         public Guid ViewPublicFormId { get; set; }
 
-        // Original form fields (all nullable)
+        // Configuration flag: true = form schema config, false/null = actual submission
+        public bool IsConfig { get; set; } = false;
+
+        // Dynamic form data (for submissions) - stored as JSON
+        [Column(TypeName = "nvarchar(max)")]
+        public string? FormDataJson { get; set; }
+
+        // Form configuration storage
+        [Column(TypeName = "nvarchar(max)")]
+        public string? FormSchemaJson { get; set; }
+
+        [Column(TypeName = "nvarchar(max)")]
+        public string? FieldLabelsJson { get; set; }
+
+        [Column(TypeName = "nvarchar(max)")]
+        public string? AdditionalFieldsJson { get; set; }
+
+        public bool? IsDeleted { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public int FormVersion { get; set; } = 1;
+
+        // Legacy/deprecated columns (kept for backward compatibility, nullable)
         public string? FullName { get; set; }
         public int? Age { get; set; }
         public string? Gender { get; set; }
@@ -29,19 +50,26 @@ namespace Medical.Models
         public string? AltContactName { get; set; }
         public string? AltPhoneNumber { get; set; }
 
-        // Form configuration storage
-        [Column(TypeName = "nvarchar(max)")]
-        public string? FormSchemaJson { get; set; }
+        [NotMapped]
+        public Dictionary<string, string> FormData
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(FormDataJson))
+                    return new Dictionary<string, string>();
 
-        [Column(TypeName = "nvarchar(max)")]
-        public string? FieldLabelsJson { get; set; }
-
-        [Column(TypeName = "nvarchar(max)")]
-        public string? AdditionalFieldsJson { get; set; }
-
-        public bool? IsDeleted { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public int FormVersion { get; set; } = 1;
+                try
+                {
+                    return JsonConvert.DeserializeObject<Dictionary<string, string>>(FormDataJson)
+                        ?? new Dictionary<string, string>();
+                }
+                catch
+                {
+                    return new Dictionary<string, string>();
+                }
+            }
+            set => FormDataJson = JsonConvert.SerializeObject(value);
+        }
 
         [NotMapped]
         public Dictionary<string, string> FieldLabels

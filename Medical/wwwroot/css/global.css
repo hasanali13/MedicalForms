@@ -522,11 +522,13 @@ body {
   border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.18s;
+  position: relative;
 }
 
 .step-item .step-title {
   font-weight: 700;
   color: #0F1724;
+  font-size: 14px;
 }
 
 .step-item .step-subtitle {
@@ -545,7 +547,7 @@ body {
   border-radius: 999px;
   min-width: 46px;
   text-align: center;
-  margin-left: 12px;
+  display: inline-block;
 }
 
 .step-item.active .step-pill {
@@ -557,6 +559,44 @@ body {
 .step-item.active .step-count {
   background: rgba(255, 255, 255, 0.12);
   color: white;
+}
+
+.step-item.active .step-title,
+.step-item.active .step-subtitle {
+  color: white;
+}
+
+.step-header-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  margin-left: 8px;
+}
+
+.step-item:hover .step-header-actions {
+  opacity: 1;
+}
+
+.step-item.active .step-header-actions {
+  opacity: 1;
+}
+
+.step-header-actions .btn-link {
+  padding: 2px 6px !important;
+  font-size: 14px;
+  line-height: 1;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.step-header-actions .btn-link:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.step-item.active .step-header-actions .btn-link:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .step-item {
@@ -963,6 +1003,142 @@ input:checked + .slider:before {
   margin-right: 8px;
 }
 
+/* ============================================
+   GROUP MODAL STYLES (Add Group)
+   ============================================ */
+.fb-group-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.fb-group-modal {
+  background: white;
+  border-radius: 12px;
+  width: 420px;
+  max-width: 90%;
+  padding: 0;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.fb-group-modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1D2939;
+  padding: 20px 24px;
+  border-bottom: 1px solid #EAECF0;
+}
+
+.fb-group-modal-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #D0D5DD;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  margin: 20px 24px;
+  max-width: calc(100% - 48px);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.fb-group-modal-input:focus {
+  outline: none;
+  border-color: #1F6DFF;
+  box-shadow: 0 0 0 3px rgba(31, 109, 255, 0.1);
+}
+
+.fb-group-modal-actions {
+  padding: 16px 24px;
+  border-top: 1px solid #EAECF0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Group card styles */
+.fb-group-card {
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.fb-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 10px;
+}
+
+.fb-group-title {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #D0D5DD;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  background: white;
+}
+
+.fb-group-title:focus {
+  outline: none;
+  border-color: #1F6DFF;
+  box-shadow: 0 0 0 3px rgba(31, 109, 255, 0.1);
+}
+
+.fb-group-delete {
+  flex-shrink: 0;
+}
+
+.fb-group-body {
+  min-height: 60px;
+  padding: 12px;
+  background: white;
+  border: 1px dashed #D0D5DD;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.fb-group-body:empty::before {
+  content: 'Drag fields here or use "Add selected field" button';
+  color: #9CA3AF;
+  font-size: 13px;
+  display: block;
+  text-align: center;
+  padding: 20px;
+}
+
+/* Disabled step visual style */
+.step-disabled .step-pill {
+  opacity: 0.6;
+  background: #F3F4F6 !important;
+  border: 1px dashed #D1D5DB !important;
+  cursor: not-allowed;
+}
+
+.step-disabled .step-title,
+.step-disabled .step-subtitle,
+.step-disabled .step-count {
+  color: #9CA3AF !important;
+}
+
+.step-disabled:hover .step-pill {
+  background: #F3F4F6 !important;
+}
+
+.step-disabled .step-header-actions {
+  opacity: 1 !important;
+}
+
 .custom-step-item {
   position: relative;
   padding: 12px;
@@ -972,234 +1148,4 @@ input:checked + .slider:before {
   border: 1px solid #dee2e6;
   transition: all 0.2s;
   cursor: pointer;
-}
-
-.custom-step-item:hover {
-  background: #f8f9fa;
-}
-
-.custom-step-item.active {
-  background: #1F6DFF;
-  color: white;
-  border-color: #1F6DFF;
-}
-
-.custom-step-item .step-title {
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.custom-step-item .step-description {
-  font-size: 12px;
-  opacity: 0.8;
-  margin-top: 4px;
-}
-
-.custom-step-item .step-count {
-  position: absolute;
-  right: 12px;
-  top: 12px;
-  background: rgba(0, 0, 0, 0.1);
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 11px;
-}
-
-.custom-step-item.active .step-count {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.step-actions {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: flex;
-  gap: 4px;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.custom-step-item:hover .step-actions {
-  opacity: 1;
-}
-
-.delete-step-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  background: #FEF3F2;
-  border: 1px solid #FDA29B;
-  color: #B42318;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.delete-step-btn:hover {
-  background: #FEE4E2;
-}
-
-.custom-step-form {
-  margin-top: 30px;
-  padding-top: 20px;
-  border-top: 2px dashed #dee2e6;
-}
-
-.custom-step-form h4 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 15px;
-}
-
-.step-empty-message {
-  text-align: center;
-  padding: 40px 20px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  color: #6c757d;
-}
-
-.step-empty-message p {
-  margin-bottom: 10px;
-}
-
-.dynamic-step-fields {
-  margin-top: 20px;
-}
-
-/* =========================
-   5) Utilities
-   ========================= */
-/* (none) */
-
-/* =========================
-   Form Builder - Field Grouping (middle panel)
-   ========================= */
-.fb-grouping-root {
-  margin-top: 10px;
-}
-
-.fb-step-actions {
-  margin-left: auto;
-}
-
-.fb-groups-host {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-.fb-group-card {
-  border: 1px solid #E4E7EC;
-  border-radius: 10px;
-  background: #FFFFFF;
-  padding: 12px;
-}
-
-.fb-group-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.fb-group-title {
-  flex: 1;
-  padding: 7px 10px;
-  border: 1px solid #D0D5DD;
-  border-radius: 8px;
-  font-size: 13px;
-}
-
-.fb-group-body {
-  min-height: 24px;
-}
-
-.fb-ungrouped {
-  margin-top: 10px;
-}
-
-.fb-group-ungroup-selected {
-  margin-top: 10px;
-}
-
-.fb-field-draggable {
-  cursor: default;
-}
-
-/* =========================
-   Form Builder - Group Name Modal (UI only)
-   ========================= */
-.fb-group-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 20000;
-}
-
-.fb-group-modal {
-  width: 420px;
-  max-width: calc(100vw - 32px);
-  background: #FFFFFF;
-  border-radius: 12px;
-  border: 1px solid #EAECF0;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-  padding: 16px;
-}
-
-.fb-group-modal-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1D2939;
-  margin-bottom: 10px;
-}
-
-.fb-group-modal-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #D0D5DD;
-  border-radius: 8px;
-  font-size: 14px;
-}
-
-.fb-group-modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-/* =========================
-   Form Builder - Blank Canvas Mode (optional)
-   Enable via querystring ?blank=1 or localStorage formbuilder.blankCanvas=true
-   ========================= */
-.fb-blank-canvas #step1Tab,
-.fb-blank-canvas #step2Tab,
-.fb-blank-canvas #step3Tab,
-.fb-blank-canvas #step1,
-.fb-blank-canvas #step2,
-.fb-blank-canvas #step3 {
-  display: none !important;
-}
-
-.fb-blank-canvas #fieldsList {
-  display: none;
-}
-
-.fb-blank-canvas .fields-section h6 {
-  display: none;
-}
-
-.fb-empty-state {
-  padding: 24px;
-  border: 1px dashed #D0D5DD;
-  border-radius: 12px;
-  background: #F9FAFB;
 }
