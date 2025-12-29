@@ -1,0 +1,39 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Medical/Dockerfile
+    container_name: medical_forms_app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      # Override the connection string to point to the db container
+      - ConnectionStrings__MedicalContext=Server=db;Database=MedicalDb;User Id=sa;Password=YourStrong@Password123;TrustServerCertificate=True;MultipleActiveResultSets=true;
+    depends_on:
+      - db
+    networks:
+      - medical-net
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: medical_forms_db
+    restart: unless-stopped
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=YourStrong@Password123
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
+    networks:
+      - medical-net
+
+networks:
+  medical-net:
+    driver: bridge
+
+volumes:
+  mssql_data:
