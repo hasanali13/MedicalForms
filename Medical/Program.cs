@@ -59,15 +59,26 @@ using (var scope = app.Services.CreateScope())
         context.Database.EnsureCreated();
         context.Database.EnsureCreated();
         
-        // SELF-HEALING: Add IsConfig column if missing (Migration workaround)
+        // SELF-HEALING: Add missing columns (Migration workaround)
         try 
         {
-            context.Database.ExecuteSqlRaw(@"
+            var sql = @"
                 IF NOT EXISTS(SELECT * FROM sys.columns WHERE Name = N'IsConfig' AND Object_ID = Object_ID(N'ViewPublicForm'))
-                BEGIN
                     ALTER TABLE ViewPublicForm ADD IsConfig bit NOT NULL DEFAULT 0;
-                END
-            ");
+
+                IF NOT EXISTS(SELECT * FROM sys.columns WHERE Name = N'FormDataJson' AND Object_ID = Object_ID(N'ViewPublicForm'))
+                    ALTER TABLE ViewPublicForm ADD FormDataJson nvarchar(max) NULL;
+
+                IF NOT EXISTS(SELECT * FROM sys.columns WHERE Name = N'FormSchemaJson' AND Object_ID = Object_ID(N'ViewPublicForm'))
+                    ALTER TABLE ViewPublicForm ADD FormSchemaJson nvarchar(max) NULL;
+
+                IF NOT EXISTS(SELECT * FROM sys.columns WHERE Name = N'FieldLabelsJson' AND Object_ID = Object_ID(N'ViewPublicForm'))
+                    ALTER TABLE ViewPublicForm ADD FieldLabelsJson nvarchar(max) NULL;
+
+                IF NOT EXISTS(SELECT * FROM sys.columns WHERE Name = N'AdditionalFieldsJson' AND Object_ID = Object_ID(N'ViewPublicForm'))
+                    ALTER TABLE ViewPublicForm ADD AdditionalFieldsJson nvarchar(max) NULL;
+            ";
+            context.Database.ExecuteSqlRaw(sql);
         }
         catch (Exception ex)
         {
