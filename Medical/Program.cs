@@ -57,7 +57,24 @@ using (var scope = app.Services.CreateScope())
         var context = services.GetRequiredService<MedicalContext>();
         // This will create the database if it doesn't exist
         context.Database.EnsureCreated();
-        Console.WriteLine("Database created successfully!");
+        context.Database.EnsureCreated();
+        
+        // SELF-HEALING: Add IsConfig column if missing (Migration workaround)
+        try 
+        {
+            context.Database.ExecuteSqlRaw(@"
+                IF NOT EXISTS(SELECT * FROM sys.columns WHERE Name = N'IsConfig' AND Object_ID = Object_ID(N'ViewPublicForm'))
+                BEGIN
+                    ALTER TABLE ViewPublicForm ADD IsConfig bit NOT NULL DEFAULT 0;
+                END
+            ");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Migration warning: {ex.Message}");
+        }
+
+        Console.WriteLine("Database created/verified successfully!");
     }
     catch (Exception ex)
     {
