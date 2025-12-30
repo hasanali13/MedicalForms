@@ -19,6 +19,7 @@ services:
       - medical-net
 
   db:
+    # Explicitly using SQL Server 2022 to match backup version
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: medical_forms_db
     restart: unless-stopped
