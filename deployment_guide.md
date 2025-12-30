@@ -63,3 +63,62 @@ Wait for the containers (`medical_forms_app` and `medical_forms_db`) to start. Y
 
 - **Database Access**: The application automatically tries to create the database on startup. If you see connection errors in the logs, ensure the `db` container is healthy and the password in the connection string matches the `MSSQL_SA_PASSWORD`.
 - **Port Conflicts**: If port `8080` is already in use on your host, change it in `docker-compose.yml` (e.g., `8081:8080`) and update the HestiaCP Proxy Pass to `http://127.0.0.1:8081`.
+
+## How to Import a Database Backup (.bak)
+
+If you have an existing database backup (e.g., `MedicalDb.bak`), follow these steps to restore it inside the container.
+
+### 1. Upload the Backup
+
+Upload your `.bak` file to your server (e.g., using FileZilla or SCP) to a know location, for example `/root/MedicalDb.bak`.
+
+### 2. Copy Backup to Container
+
+You need to copy the file from your host server into the running SQL Server container.
+Run this command in your server terminal:
+
+```bash
+docker cp /root/MedicalDb.bak medical_forms_db:/var/opt/mssql/MedicalDb.bak
+```
+
+### 3. Verify File Inside Container
+
+Check if the file is accessible to SQL Server:
+
+```bash
+docker exec -it medical_forms_db ls -l /var/opt/mssql/
+```
+
+### 4. Restore the Database
+
+You will use the `sqlcmd` tool inside the container to run the T-SQL RESTORE command.
+
+**Option A: Simple Restore (Overwrite)**
+If your backup file names align with defaults:
+
+```bash
+docker exec -it medical_forms_db /opt/mssql-tools/bin/sqlcmd \
+   -S localhost -U sa -P YourStrong@Password123 \
+   -Q "RESTORE DATABASE [MedicalDb] FROM DISK = N'/var/opt/mssql/MedicalDb.bak' WITH FILE = 1, NOUNLOAD, REPLACE, STATS = 5"
+```
+
+**Option B: Restore with MOVE (If file names differ)**
+If you get an error like *"Directory lookup for the file... failed"*, you need to specify the physical paths for the internal database files (`.mdf` and `.ldf`).
+
+1. Check logical names:
+
+    ```bash
+    docker exec -it medical_forms_db /opt/mssql-tools/bin/sqlcmd \
+       -S localhost -U sa -P YourStrong@Password123 \
+       -Q "RESTORE FILELISTONLY FROM DISK = N'/var/opt/mssql/MedicalDb.bak'"
+    ```
+
+    *Note the output values in the `LogicalName` column (e.g., `MedicalDb` and `MedicalDb_log`).*
+
+2. Run Restore with MOVE:
+
+    ```bash
+    docker exec -it medical_forms_db /opt/mssql-tools/bin/sqlcmd \
+       -S localhost -U sa -P YourStrong@Password123 \
+       -Q "RESTORE DATABASE [MedicalDb] FROM DISK = N'/var/opt/mssql/MedicalDb.bak' WITH MOVE 'MedicalDb' TO '/var/opt/mssql/data/MedicalDb.mdf', MOVE 'MedicalDb_log' TO '/var/opt/mssql/data/MedicalDb_log.ldf', NOUNLOAD, REPLACE, STATS = 5"
+    ```
