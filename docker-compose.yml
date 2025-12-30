@@ -13,8 +13,8 @@ services:
       # Override the connection string to point to the db container
       - ConnectionStrings__MedicalContext=Server=db;Database=MedicalDb;User Id=sa;Password=YourStrong@Password123;TrustServerCertificate=True;MultipleActiveResultSets=true;
     depends_on:
-      db:
-        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     networks:
       - medical-net
 
@@ -38,6 +38,23 @@ services:
       retries: 5
       start_period: 10s
       timeout: 3s
+
+  db-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: medical_forms_db_init
+    restart: "no"
+    environment:
+      - MSSQL_SA_PASSWORD=YourStrong@Password123
+    volumes:
+      - ./Medical/db-init.sh:/db-init.sh
+      - mssql_data:/var/opt/mssql
+    entrypoint: /bin/bash
+    command: /db-init.sh
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - medical-net
 
 networks:
   medical-net:
