@@ -39,6 +39,17 @@ services:
       start_period: 10s
       timeout: 3s
 
+  db-gui:
+    image: adminer
+    container_name: medical_forms_gui
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    environment:
+      - ADMINER_DEFAULT_SERVER=db
+    networks:
+      - medical-net
+
 networks:
   medical-net:
     driver: bridge
