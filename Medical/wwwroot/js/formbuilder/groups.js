@@ -415,6 +415,26 @@
 
     // REQUIRED: render immediately from state
     renderGroupsForStep(stepId);
+    
+    // Sync to server
+    saveGroups(stepId, stepState.groups);
+  }
+
+  function saveGroups(stepId, groups) {
+    const url = '/ViewPublicForms/UpdateStepGroups'; // Hardcoded for simplified edit
+    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'RequestVerificationToken': token || ''
+        },
+        body: JSON.stringify({
+            StepOrder: stepId,
+            Groups: groups
+        })
+    }).catch(e => console.error('Group save failed', e));
   }
 
   function deleteGroup(stepId, groupId) {
@@ -444,6 +464,8 @@
 
     // Re-render from state
     renderGroupsForStep(stepId);
+    
+    saveGroups(stepId, stepState.groups);
   }
 
   function renameGroup(stepId, groupId, name) {
@@ -456,6 +478,8 @@
 
     // Keep UI in sync without relying on incremental DOM updates
     renderGroupsForStep(stepId);
+    
+    saveGroups(stepId, stepState.groups);
   }
 
   function moveField(stepId, fieldId, targetGroupIdOrNull) {
@@ -482,6 +506,8 @@
 
     // Re-render from state
     renderGroupsForStep(stepId);
+    
+    saveGroups(stepId, stepState.groups);
   }
 
   function getSelectedFieldIdFromExistingSelection() {
@@ -637,6 +663,24 @@
     chainSwitchStepWrapper();
 
     requestAnimationFrame(() => {
+      // Hydrate from server FIRST
+      try {
+        const serverSteps = window.__formBuilderData?.formStepsData || [];
+        const store = getStore();
+        let changed = false;
+        
+        serverSteps.forEach(s => {
+             // Use server groups if available (overwriting local storage to ensure sync)
+             if (s.Groups) {
+                store.steps ??= {};
+                store.steps[String(s.Order)] = { groups: s.Groups };
+                changed = true;
+             }
+        });
+        
+        if (changed) setStore(store);
+      } catch (e) { }
+
       const stepEl = getActiveStepElement();
       const stepId = stepEl ? getStepIdFromStepElement(stepEl) : null;
       if (stepId) {

@@ -10,5 +10,8 @@ namespace Medical.Models
         public bool IsActive { get; set; } = true;
         public bool IsConfig { get; set; } = false;
         public string FormData { get; set; } = string.Empty;
+
+        [Newtonsoft.Json.JsonProperty("groups")]
+        public System.Collections.Generic.List<StepGroup> Groups { get; set; } = new System.Collections.Generic.List<StepGroup>();
     }
 }

@@ -744,6 +744,42 @@ namespace Medical.Controllers
             }
         }
 
+        // AJAX: Update groups for a step
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateStepGroups([FromBody] UpdateStepGroupsRequest request)
+        {
+            try
+            {
+                var configForm = GetOrCreateConfigForm();
+
+                // Read steps
+                var steps = FormSchemaStepsHelper.ReadSteps(configForm.FormSchemaJson);
+
+                // Find target step
+                var targetStep = steps.FirstOrDefault(s => s.Order == request.StepOrder);
+                if (targetStep == null)
+                    return Json(new { success = false, message = "Step not found" });
+
+                // Update groups
+                targetStep.Groups = request.Groups ?? new List<StepGroup>();
+
+                // Write back
+                configForm.FormSchemaJson = FormSchemaStepsHelper.WriteSteps(configForm.FormSchemaJson, steps);
+                configForm.FormVersion++;
+                configForm.CreatedAt = DateTime.UtcNow;
+
+                _context.ViewPublicForm.Update(configForm);
+                await _context.SaveChangesAsync();
+
+                return Json(new { success = true, message = "Groups updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error: {ex.Message}" });
+            }
+        }
+
         // DIAGNOSTIC: Check database configuration
         [HttpGet]
         public IActionResult DiagnoseFormConfig()
@@ -1212,6 +1248,12 @@ namespace Medical.Controllers
     {
         public Guid StepId { get; set; }
         public bool IsActive { get; set; }
+    }
+
+    public class UpdateStepGroupsRequest
+    {
+        public int StepOrder { get; set; }
+        public List<StepGroup> Groups { get; set; } = new List<StepGroup>();
     }
 
     // DTO for public form submissions (controller accepts this DTO, transforms to entity)

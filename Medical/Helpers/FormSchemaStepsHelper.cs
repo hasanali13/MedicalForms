@@ -255,10 +255,9 @@ namespace Medical.Helpers
                 // Default group per step (backward compatibility)
                 var defaultGroup = new JObject
                 {
-                    ["id"] = !string.IsNullOrWhiteSpace(stepId) ? $"default_{stepId}" : $"default_{order}",
-                    ["title"] = string.Empty,
-                    ["order"] = 1,
-                    ["isActive"] = true
+                    ["groupId"] = !string.IsNullOrWhiteSpace(stepId) ? $"default_{stepId}" : $"default_{order}",
+                    ["name"] = string.Empty,
+                    ["fieldIds"] = new JArray()
                 };
 
                 stepTok["groups"] = new JArray(defaultGroup);
