@@ -13,10 +13,16 @@
     toast.setAttribute('role', 'status');
     toast.setAttribute('aria-live', 'polite');
 
-    var icon = document.createElement('span');
-    icon.setAttribute('aria-hidden', 'true');
-    icon.style.fontSize = '16px';
-    icon.textContent = type === 'success' ? '?' : type === 'error' ? '?' : '??';
+    var icon = document.createElement('i');
+    if (type === 'success') {
+        icon.className = 'fas fa-check-circle text-success';
+    } else if (type === 'error') {
+        icon.className = 'fas fa-exclamation-circle text-danger';
+    } else {
+        icon.className = 'fas fa-info-circle text-info';
+    }
+    icon.style.fontSize = '18px';
+    icon.style.marginRight = '8px';
 
     var msg = document.createElement('span');
     msg.textContent = message;
