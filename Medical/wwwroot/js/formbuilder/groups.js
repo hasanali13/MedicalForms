@@ -162,7 +162,7 @@
 
     const del = document.createElement('button');
     del.type = 'button';
-    del.className = 'btn btn-sm btn-outline-danger fb-group-delete';
+    del.className = 'btn-origin btn-origin-sm btn-origin-danger fb-group-delete';
     del.textContent = 'Delete';
     del.setAttribute('data-group-delete', group.groupId);
     del.setAttribute('data-step-id', String(stepId));
@@ -185,14 +185,14 @@
 
     const addSelectedBtn = document.createElement('button');
     addSelectedBtn.type = 'button';
-    addSelectedBtn.className = 'btn btn-sm btn-outline-primary fb-group-add-selected';
+    addSelectedBtn.className = 'btn-origin btn-origin-sm btn-origin-secondary fb-group-add-selected';
     addSelectedBtn.textContent = 'Add selected field';
     addSelectedBtn.setAttribute('data-group-add-selected', group.groupId);
     addSelectedBtn.setAttribute('data-step-id', String(stepId));
 
     const ungroupSelectedBtn = document.createElement('button');
     ungroupSelectedBtn.type = 'button';
-    ungroupSelectedBtn.className = 'btn btn-sm btn-outline-secondary fb-group-ungroup-selected';
+    ungroupSelectedBtn.className = 'btn-origin btn-origin-sm btn-origin-secondary fb-group-ungroup-selected';
     ungroupSelectedBtn.textContent = 'Move selected to ungrouped';
     ungroupSelectedBtn.setAttribute('data-ungroup-selected', group.groupId);
     ungroupSelectedBtn.setAttribute('data-step-id', String(stepId));
@@ -226,7 +226,7 @@
 
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'btn btn-sm btn-outline-primary fb-add-group';
+    btn.className = 'btn-origin btn-origin-sm btn-origin-secondary fb-add-group';
     btn.textContent = '+ Add Group';
     btn.setAttribute('data-step-id', String(stepId));
 
@@ -351,12 +351,12 @@
 
     const cancelBtn = document.createElement('button');
     cancelBtn.type = 'button';
-    cancelBtn.className = 'btn btn-sm btn-secondary';
+    cancelBtn.className = 'btn-origin btn-origin-sm btn-origin-secondary';
     cancelBtn.textContent = 'Cancel';
 
     const okBtn = document.createElement('button');
     okBtn.type = 'button';
-    okBtn.className = 'btn btn-sm btn-primary';
+    okBtn.className = 'btn-origin btn-origin-sm btn-origin-primary';
     okBtn.textContent = 'Create';
 
     function cleanup() {
