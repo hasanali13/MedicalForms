@@ -8,11 +8,54 @@
 /* ============================================
    FORM BUILDER LAYOUT
    ============================================ */
+/* ============================================
+   FORM BUILDER LAYOUT
+   ============================================ */
 .builder-layout {
   display: grid;
-  grid-template-columns: 280px 1fr 340px;
+  grid-template-columns: 280px 1fr 320px;
   gap: var(--space-lg);
   height: calc(100vh - var(--topbar-height) - var(--space-xl) * 2);
+  min-height: 600px;
+}
+
+/* Tablet: Collapse right panel or adjust widths */
+@media (max-width: 1200px) {
+  .builder-layout {
+    grid-template-columns: 260px 1fr 300px;
+    gap: var(--space-md);
+  }
+}
+
+/* Tablet Portrait / Large Phone: Stack panels */
+@media (max-width: 992px) {
+  .builder-layout {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    /* Allow scrolling */
+  }
+
+  .left-steps {
+    height: auto;
+    max-height: 400px;
+  }
+
+  .left-panel-container.fields-section {
+    max-height: 200px;
+  }
+
+  .form-panel {
+    min-height: 500px;
+  }
+
+  /* Right panel becomes a bottom sheet or stays stacked */
+  .field-properties-card {
+    position: static;
+    width: 100%;
+    max-height: none;
+    height: auto;
+  }
 }
 
 /* ============================================
@@ -40,7 +83,8 @@
 /* First container (Form Steps) - takes remaining space */
 .left-panel-container:first-child {
   flex: 1;
-  min-height: 0; /* Important for flex overflow */
+  min-height: 0;
+  /* Important for flex overflow */
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -276,8 +320,15 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .step-title-text {
@@ -301,16 +352,18 @@
 }
 
 .fb-group-card {
-  background: linear-gradient(to bottom, var(--origin-bg-card) 0%, var(--origin-bg-hover) 100%);
+  background: var(--origin-bg-card);
   border: 1px solid var(--origin-border-light);
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
   box-shadow: var(--shadow-sm);
   transition: all var(--transition-base);
+  margin-bottom: var(--space-lg);
 }
 
 .fb-group-card:hover {
   box-shadow: var(--shadow-md);
+  border-color: var(--origin-border-medium);
 }
 
 .fb-group-header {
@@ -566,11 +619,11 @@
   border-radius: var(--radius-full);
 }
 
-.switch input:checked + .slider {
+.switch input:checked+.slider {
   background: var(--origin-primary-gradient);
 }
 
-.switch input:checked + .slider:before {
+.switch input:checked+.slider:before {
   transform: translateX(20px);
 }
 
@@ -594,6 +647,7 @@
     opacity: 0;
     max-height: 0;
   }
+
   to {
     opacity: 1;
     max-height: 500px;
@@ -809,6 +863,7 @@
     opacity: 0;
     transform: translateY(32px) scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -1052,7 +1107,7 @@
     grid-template-columns: 1fr;
     height: auto;
   }
-  
+
   .field-properties-card {
     position: relative;
     top: 0;
@@ -1064,11 +1119,11 @@
   .admin-content {
     padding: var(--space-md);
   }
-  
+
   .form-panel {
     padding: var(--space-md);
   }
-  
+
   .builder-layout {
     gap: var(--space-md);
   }
