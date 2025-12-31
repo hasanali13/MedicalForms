@@ -458,7 +458,7 @@
             customStepsData: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
                 customSteps.Select(s => new { s.FieldId, s.DisplayName, s.Step, s.Placeholder, s.OptionsJson })
             )),
-            formStepsData: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            formStepsData: @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
                 formSteps.Select(s => new { s.Id, s.Name, s.Order, s.IsActive, s.Groups })
             ))
         };
