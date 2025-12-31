@@ -418,6 +418,8 @@
     
     // Sync to server
     saveGroups(stepId, stepState.groups);
+
+    try { showToast('Group added successfully', 'success'); } catch { }
   }
 
   function saveGroups(stepId, groups) {
@@ -434,7 +436,18 @@
             StepOrder: stepId,
             Groups: groups
         })
-    }).catch(e => console.error('Group save failed', e));
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (!data.success) {
+            console.error('Group save failed', data.message);
+            try { showToast('Failed to save group changes', 'error'); } catch { }
+        }
+    })
+    .catch(e => {
+        console.error('Group save failed', e);
+        try { showToast('Network error saving changes', 'error'); } catch { }
+    });
   }
 
   function deleteGroup(stepId, groupId) {
@@ -466,6 +479,8 @@
     renderGroupsForStep(stepId);
     
     saveGroups(stepId, stepState.groups);
+
+    try { showToast('Group deleted', 'success'); } catch { }
   }
 
   function renameGroup(stepId, groupId, name) {

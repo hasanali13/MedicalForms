@@ -340,19 +340,22 @@ async function updateSelectedField() {
 
       const result = await response.json();
       if (result.success) {
-        showToast('Label updated successfully', 'success');
+        showToast(result.message || 'Field updated successfully', 'success');
+        
+        // Update UI
+        if (updatedData.DisplayName && activeStep && activeStep.Order) {
+          // Update left list
+          const leftItem = document.querySelector(`.field-item[data-field-id="${selectedFieldData.fieldId}"] span:last-child`);
+          if (leftItem) leftItem.textContent = updatedData.DisplayName;
 
-        const leftItem = document.querySelector(`.field-item[data-field-key="${selectedFieldData.fieldKey}"]`);
-        if (leftItem) {
-          leftItem.querySelector('span:last-child').textContent = updatedData.DisplayName;
+          // Update preview
+          const previewField = document.querySelector(`.additional-field-container[data-field-id="${selectedFieldData.fieldId}"] .form-label`);
+          if (previewField) {
+            previewField.textContent = updatedData.DisplayName;
+          }
+  
+          selectedFieldData.displayName = updatedData.DisplayName;
         }
-
-        const previewField = document.querySelector(`.mb-3[data-field-key="${selectedFieldData.fieldKey}"] label`);
-        if (previewField) {
-          previewField.textContent = updatedData.DisplayName;
-        }
-
-        selectedFieldData.displayName = updatedData.DisplayName;
       } else {
         showToast(result.message || 'Error updating label', 'error');
       }
@@ -384,7 +387,7 @@ async function deleteSelectedField() {
 
     const result = await response.json();
     if (result.success) {
-      showToast(result.message, 'success');
+      showToast(result.message || 'Field deleted successfully', 'success');
 
       const leftItem = document.querySelector(`.field-item[data-field-id="${selectedFieldData.fieldId}"]`);
       if (leftItem) leftItem.remove();
@@ -400,7 +403,7 @@ async function deleteSelectedField() {
 
       try { updateCounts(); } catch (e) { }
     } else {
-      showToast(result.message, 'error');
+      showToast(result.message || 'Failed to delete field', 'error');
     }
   } catch (error) {
     showToast('Error deleting field: ' + error.message, 'error');
