@@ -85,11 +85,14 @@ function showToast(message, type = 'success') {
 // =================================
 function populateDependsOnFields(currentStep, excludeFieldId) {
   const dropdown = document.getElementById('fpDependsOnField');
+  if (!dropdown) return;
   dropdown.innerHTML = '<option value="">Select field...</option>';
+
+  const additionalFieldsData = window.__formBuilderData?.additionalFieldsData || [];
 
   for (let step = 1; step <= currentStep; step++) {
     additionalFieldsData
-      .filter(f => f.Step === step && f.FieldId !== excludeFieldId)
+      .filter(f => f.Step === step && String(f.FieldId) !== String(excludeFieldId))
       .forEach(f => {
         const option = document.createElement('option');
         option.value = f.FieldId;
@@ -100,110 +103,95 @@ function populateDependsOnFields(currentStep, excludeFieldId) {
 }
 
 function applyConditionalLogic() {
-  // Remove all existing conditional listeners first to prevent duplicates
+  const additionalFieldsData = window.__formBuilderData?.additionalFieldsData || [];
   const conditionalFields = additionalFieldsData.filter(f => f.IsConditional && f.ConditionalLogicJson);
   
   conditionalFields.forEach(field => {
     try {
-      const condition = JSON.parse(field.ConditionalLogicJson);
+      const logic = JSON.parse(field.ConditionalLogicJson);
       const fieldContainer = document.querySelector(`.additional-field-container[data-field-id="${field.FieldId}"]`);
       if (!fieldContainer) return;
 
-      const dependsOnFieldKey = condition.DependsOnFieldKey || condition.dependsOnFieldKey;
-      const showWhenValue = condition.ShowWhenValue || condition.showWhenValue;
+      // Support multiple property name variations
+      const parentFieldId = logic.parentFieldId || logic.ParentFieldId || logic.DependsOnFieldKey || logic.dependsOnFieldKey;
+      const expectedValue = logic.expectedValue || logic.ExpectedValue || logic.ShowWhenValue || logic.showWhenValue;
 
-      if (!dependsOnFieldKey || !showWhenValue) return;
+      if (!parentFieldId) return;
 
       // Find the dependent field
       let dependentField = null;
 
       // Try finding by data-field-key (for static fields)
-      dependentField = document.querySelector(`[data-field-key="${dependsOnFieldKey}"] select, [data-field-key="${dependsOnFieldKey}"] input`);
+      dependentField = document.querySelector(`[data-field-key="${parentFieldId}"] select, [data-field-key="${parentFieldId}"] input`);
 
       // Try finding by field container data-field-id (for dynamic fields)
       if (!dependentField) {
-        const depContainer = document.querySelector(`.additional-field-container[data-field-id="${dependsOnFieldKey}"]`);
+        const depContainer = document.querySelector(`.additional-field-container[data-field-id="${parentFieldId}"]`);
         if (depContainer) {
-          dependentField = depContainer.querySelector('input, select, textarea, input[type="radio"]:checked');
+          dependentField = depContainer.querySelector('input, select, textarea');
           
-          // For radio buttons, we need to get the whole group
           if (!dependentField || dependentField.type === 'radio') {
             const radioGroup = depContainer.querySelectorAll('input[type="radio"]');
             if (radioGroup.length > 0) {
-              // Get the checked radio or first radio for event binding
               dependentField = depContainer.querySelector('input[type="radio"]:checked') || radioGroup[0];
             }
           }
         }
       }
 
-      if (!dependentField) {
-        console.warn(`Conditional logic: Could not find dependent field for ${dependsOnFieldKey}`);
-        return;
-      }
+      if (!dependentField) return;
 
       const checkVisibility = () => {
         let fieldValue = '';
         
-        // Handle radio buttons specially
         if (dependentField.type === 'radio') {
           const container = dependentField.closest('.additional-field-container, .mb-3');
           if (container) {
             const checkedRadio = container.querySelector('input[type="radio"]:checked');
             fieldValue = checkedRadio ? checkedRadio.value : '';
           }
+        } else if (dependentField.type === 'checkbox') {
+          fieldValue = dependentField.checked ? 'true' : 'false';
         } else {
           fieldValue = dependentField.value;
         }
         
         const normalizedFieldValue = String(fieldValue).toLowerCase().trim();
-        const normalizedShowWhen = String(showWhenValue).toLowerCase().trim();
-        const shouldShow = normalizedFieldValue === normalizedShowWhen;
+        const normalizedExpectedValue = String(expectedValue || '').toLowerCase().trim();
+        
+        let conditionMet = false;
+        if (normalizedFieldValue === normalizedExpectedValue) {
+          conditionMet = true;
+        } else if (expectedValue && String(expectedValue).includes(',')) {
+          const allowedValues = String(expectedValue).split(',').map(v => v.trim().toLowerCase());
+          conditionMet = allowedValues.some(v => v === normalizedFieldValue);
+        }
 
-        if (shouldShow) {
+        if (conditionMet) {
           fieldContainer.style.display = 'block';
-          fieldContainer.style.opacity = '0';
-          setTimeout(() => {
-            fieldContainer.style.transition = 'opacity 0.3s';
-            fieldContainer.style.opacity = '1';
-          }, 10);
+          fieldContainer.style.opacity = '1';
         } else {
-          fieldContainer.style.transition = 'opacity 0.3s';
-          fieldContainer.style.opacity = '0';
-          setTimeout(() => {
-            if (fieldContainer.style.opacity === '0') {
-              fieldContainer.style.display = 'none';
-            }
-          }, 300);
+          fieldContainer.style.display = 'none';
         }
       };
 
-      // Initial visibility check
       checkVisibility();
 
-      // Remove old listeners by cloning and replacing (prevents duplicate bindings)
-      // This is a safe way to remove all event listeners
-      if (dependentField._conditionalListenerBound) {
-        return; // Already bound for this page load
-      }
-
-      // For radio buttons, bind to ALL radios in the group
-      if (dependentField.type === 'radio') {
-        const container = dependentField.closest('.additional-field-container, .mb-3');
-        if (container) {
-          const allRadios = container.querySelectorAll('input[type="radio"]');
-          allRadios.forEach(radio => {
-            if (!radio._conditionalListenerBound) {
+      if (!dependentField._conditionalListenerBound) {
+        if (dependentField.type === 'radio') {
+          const container = dependentField.closest('.additional-field-container, .mb-3');
+          if (container) {
+            const allRadios = container.querySelectorAll('input[type="radio"]');
+            allRadios.forEach(radio => {
               radio.addEventListener('change', checkVisibility);
               radio._conditionalListenerBound = true;
-            }
-          });
+            });
+          }
+        } else {
+          dependentField.addEventListener('change', checkVisibility);
+          dependentField.addEventListener('input', checkVisibility);
+          dependentField._conditionalListenerBound = true;
         }
-      } else {
-        // For other fields
-        dependentField.addEventListener('change', checkVisibility);
-        dependentField.addEventListener('input', checkVisibility);
-        dependentField._conditionalListenerBound = true;
       }
     } catch (e) {
       console.error('Error applying conditional logic for field:', field.FieldId, e);

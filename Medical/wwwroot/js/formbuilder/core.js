@@ -134,6 +134,124 @@
   };
 
   // =================================
+  // CONDITIONAL FIELDS LOGIC
+  // =================================
+  window.populateDependsOnFields = function(currentStep, excludeFieldId) {
+    const dropdown = document.getElementById('fpDependsOnField');
+    if (!dropdown) return;
+    dropdown.innerHTML = '<option value="">Select field...</option>';
+
+    const additionalFieldsData = window.__formBuilderData?.additionalFieldsData || [];
+
+    for (let step = 1; step <= currentStep; step++) {
+      additionalFieldsData
+        .filter(f => f.Step === step && String(f.FieldId) !== String(excludeFieldId))
+        .forEach(f => {
+          const option = document.createElement('option');
+          option.value = f.FieldId;
+          option.textContent = `${f.DisplayName} (Step ${step})`;
+          dropdown.appendChild(option);
+        });
+    }
+  };
+
+  window.applyConditionalLogic = function() {
+    const additionalFieldsData = window.__formBuilderData?.additionalFieldsData || [];
+    const conditionalFields = additionalFieldsData.filter(f => f.IsConditional && f.ConditionalLogicJson);
+    
+    conditionalFields.forEach(field => {
+      try {
+        const logic = JSON.parse(field.ConditionalLogicJson);
+        const fieldContainer = document.querySelector(`.additional-field-container[data-field-id="${field.FieldId}"]`);
+        if (!fieldContainer) return;
+
+        // Support multiple property name variations
+        const parentFieldId = logic.parentFieldId || logic.ParentFieldId || logic.DependsOnFieldKey || logic.dependsOnFieldKey;
+        const expectedValue = logic.expectedValue || logic.ExpectedValue || logic.ShowWhenValue || logic.showWhenValue;
+
+        if (!parentFieldId) return;
+
+        // Find the dependent field
+        let dependentField = null;
+
+        // Try finding by field container data-field-id (for dynamic fields)
+        const depContainer = document.querySelector(`.additional-field-container[data-field-id="${parentFieldId}"]`);
+        if (depContainer) {
+          dependentField = depContainer.querySelector('input, select, textarea');
+          
+          // For radio buttons, we need to get the whole group or the checked one
+          if (!dependentField || dependentField.type === 'radio') {
+            const radioGroup = depContainer.querySelectorAll('input[type="radio"]');
+            if (radioGroup.length > 0) {
+              dependentField = depContainer.querySelector('input[type="radio"]:checked') || radioGroup[0];
+            }
+          }
+        }
+
+        if (!dependentField) return;
+
+        const checkVisibility = () => {
+          let fieldValue = '';
+          
+          // Handle radio buttons specially
+          if (dependentField.type === 'radio') {
+            const container = dependentField.closest('.additional-field-container');
+            if (container) {
+              const checkedRadio = container.querySelector('input[type="radio"]:checked');
+              fieldValue = checkedRadio ? checkedRadio.value : '';
+            }
+          } else if (dependentField.type === 'checkbox') {
+            fieldValue = dependentField.checked ? 'true' : 'false';
+          } else {
+            fieldValue = dependentField.value;
+          }
+          
+          const normalizedFieldValue = String(fieldValue).toLowerCase().trim();
+          const normalizedExpectedValue = String(expectedValue || '').toLowerCase().trim();
+          
+          let conditionMet = false;
+          if (normalizedFieldValue === normalizedExpectedValue) {
+            conditionMet = true;
+          } else if (expectedValue && String(expectedValue).includes(',')) {
+            const allowedValues = String(expectedValue).split(',').map(v => v.trim().toLowerCase());
+            conditionMet = allowedValues.some(v => v === normalizedFieldValue);
+          }
+
+          if (conditionMet) {
+            fieldContainer.style.display = 'block';
+            fieldContainer.style.opacity = '1';
+          } else {
+            fieldContainer.style.display = 'none';
+          }
+        };
+
+        // Initial visibility check
+        checkVisibility();
+
+        // Bind events if not already done
+        if (!dependentField._conditionalListenerBound) {
+          if (dependentField.type === 'radio') {
+            const container = dependentField.closest('.additional-field-container');
+            if (container) {
+              const allRadios = container.querySelectorAll('input[type="radio"]');
+              allRadios.forEach(radio => {
+                radio.addEventListener('change', checkVisibility);
+                radio._conditionalListenerBound = true;
+              });
+            }
+          } else {
+            dependentField.addEventListener('change', checkVisibility);
+            dependentField.addEventListener('input', checkVisibility);
+            dependentField._conditionalListenerBound = true;
+          }
+        }
+      } catch (e) {
+        console.error('Error applying conditional logic for field:', field.FieldId, e);
+      }
+    });
+  };
+
+  // =================================
   // SWITCH STEP
   // =================================
   window.switchStep = function(stepOrder) {
