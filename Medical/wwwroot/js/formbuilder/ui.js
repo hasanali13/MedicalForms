@@ -628,7 +628,16 @@ function updateConditionalValueInput(dependsOnFieldId, currentValue = '') {
         { key: 'Gender', type: 'radio', options: ['Male', 'Female', 'Other'] },
         { key: 'DateOfBirth', type: 'date' },
         { key: 'HasAllergies', type: 'select', options: ['Yes', 'No'] },
-        { key: 'HasAlternativeContact', type: 'select', options: ['Yes', 'No'] }
+        { key: 'AllergyDescription', type: 'text' },
+        { key: 'CurrentMedication', type: 'text' },
+        { key: 'HeightCm', type: 'number' },
+        { key: 'WeightKg', type: 'number' },
+        { key: 'ContactName', type: 'text' },
+        { key: 'Relationship', type: 'text' },
+        { key: 'PhoneNumber', type: 'tel' },
+        { key: 'HasAlternativeContact', type: 'select', options: ['Yes', 'No'] },
+        { key: 'AltContactName', type: 'text' },
+        { key: 'AltPhoneNumber', type: 'tel' }
     ];
     
     const staticMatch = staticFields.find(f => f.key === dependsOnFieldId);
@@ -650,9 +659,10 @@ function updateConditionalValueInput(dependsOnFieldId, currentValue = '') {
         
         // Populate options
         let options = [];
-        if (dependentField && dependentField.OptionsJson) {
+        if (dependentField && (dependentField.OptionsJson || dependentField.optionsJson)) {
             try {
-                const parsed = JSON.parse(dependentField.OptionsJson);
+                const json = dependentField.OptionsJson || dependentField.optionsJson;
+                const parsed = JSON.parse(json);
                 options = parsed.map(o => ({ 
                   label: o.Label || o.label || o, 
                   value: o.Value || o.value || o.Label || o.label || o 
@@ -672,6 +682,9 @@ function updateConditionalValueInput(dependsOnFieldId, currentValue = '') {
             }
             currentInput.appendChild(option);
         });
+
+        // Ensure the select value is actually set
+        if (currentValue) currentInput.value = currentValue;
     } else {
         // Create or ensure text input
         if (currentInput.tagName !== 'INPUT') {
