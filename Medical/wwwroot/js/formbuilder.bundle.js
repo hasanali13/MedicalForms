@@ -961,6 +961,81 @@ function refreshDynamicFieldPreview(fieldId, updatedData) {
 // =================================
 // DROPDOWN OPTIONS EDITOR - SIMPLIFIED
 // =================================
+
+/**
+ * Dynamically switches the "Equals Value" input between a text box and a dropdown
+ * based on the selected "Depends On" field's type.
+ */
+function updateConditionalValueInput(dependsOnFieldId, currentValue = '') {
+    const valueInput = document.getElementById('fpShowWhenValue');
+    if (!valueInput) return;
+
+    // Find the dependent field data
+    let dependentField = null;
+    
+    // Try dynamic fields
+    const additionalFieldsData = window.__formBuilderData?.additionalFieldsData || [];
+    dependentField = additionalFieldsData.find(f => String(f.FieldId) === String(dependsOnFieldId));
+    
+    const fieldType = (dependentField?.FieldType || '').toLowerCase();
+    const useDropdown = (fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox');
+
+    let currentInput = document.getElementById('fpShowWhenValue');
+    
+    if (useDropdown) {
+        // Create or ensure select element
+        if (currentInput.tagName !== 'SELECT') {
+            const select = document.createElement('select');
+            select.id = 'fpShowWhenValue';
+            select.className = 'fp-select';
+            currentInput.replaceWith(select);
+            currentInput = select;
+        }
+        
+        // Populate options
+        let options = [];
+        if (fieldType === 'checkbox') {
+            options = [
+                { label: 'Yes', value: 'true' },
+                { label: 'No', value: 'false' }
+            ];
+        } else if (dependentField && dependentField.OptionsJson) {
+            try {
+                const parsed = JSON.parse(dependentField.OptionsJson);
+                if (Array.isArray(parsed)) {
+                    options = parsed.map(o => ({ 
+                      label: o.Label || o.label || o.Value || o.value || o, 
+                      value: o.Value || o.value || o.Label || o.label || o 
+                    }));
+                }
+            } catch (e) { console.error('Error parsing OptionsJson in updateConditionalValueInput:', e); }
+        }
+        
+        currentInput.innerHTML = '<option value="">Select value...</option>';
+        options.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = opt.label;
+            if (String(opt.value).toLowerCase() === String(currentValue).toLowerCase()) {
+                option.selected = true;
+            }
+            currentInput.appendChild(option);
+        });
+    } else {
+        // Create or ensure text input
+        if (currentInput.tagName !== 'INPUT') {
+            const input = document.createElement('input');
+            input.id = 'fpShowWhenValue';
+            input.type = 'text';
+            input.className = 'fp-input';
+            input.placeholder = 'e.g., Yes, true, Male';
+            currentInput.replaceWith(input);
+            currentInput = input;
+        }
+        currentInput.value = currentValue;
+    }
+}
+
 function toggleOptionsEditor(show, fieldData) {
   const editor = document.getElementById('fpOptionsEditor');
   if (!editor) return;
@@ -1577,7 +1652,14 @@ function bindFormBuilderEvents() {
     deleteBtn.addEventListener('click', deleteSelectedField);
   }
 
-  // Conditional checkbox toggle
+  // Conditional field changes
+  const fpDependsOnField = document.getElementById('fpDependsOnField');
+  if (fpDependsOnField) {
+    fpDependsOnField.addEventListener('change', function () {
+      updateConditionalValueInput(this.value);
+    });
+  }
+
   const fpConditional = document.getElementById('fpConditional');
   if (fpConditional) {
     fpConditional.addEventListener('change', function () {
