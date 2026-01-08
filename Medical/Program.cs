@@ -27,11 +27,12 @@ builder.Services.AddSession(options =>
 var app = builder.Build();
 
 // ERROR HANDLING
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Home/Error");
-    app.UseHsts();
-}
+// if (!app.Environment.IsDevelopment())
+// {
+//     app.UseExceptionHandler("/Home/Error");
+//     app.UseHsts();
+// }
+app.UseDeveloperExceptionPage();
 
 // MIDDLEWARE PIPELINE
 app.UseHttpsRedirection();
