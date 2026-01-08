@@ -575,7 +575,14 @@ function bindFormBuilderEvents() {
     deleteBtn.addEventListener('click', deleteSelectedField);
   }
 
-  // Conditional checkbox toggle
+  // Conditional field changes
+  const fpDependsOnField = document.getElementById('fpDependsOnField');
+  if (fpDependsOnField) {
+    fpDependsOnField.addEventListener('change', function () {
+      updateConditionalValueInput(this.value);
+    });
+  }
+
   const fpConditional = document.getElementById('fpConditional');
   if (fpConditional) {
     fpConditional.addEventListener('change', function () {

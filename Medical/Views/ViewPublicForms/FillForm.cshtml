@@ -753,7 +753,7 @@
             input = document.createElement('select');
             input.className = 'form-control form-select';
 
-            const options = field.OptionsJson ? JSON.parse(field.OptionsJson).map(o => o.Label || o.label) : [];
+            const options = field.OptionsJson ? JSON.parse(field.OptionsJson) : [];
             
             if (!isRequired) {
                 const emptyOpt = document.createElement('option');
@@ -763,9 +763,11 @@
             }
             
             options.forEach(opt => {
+                const label = opt.Label || opt.label || opt;
+                const value = opt.Value || opt.value || label;
                 const optEl = document.createElement('option');
-                optEl.value = opt;
-                optEl.textContent = opt;
+                optEl.value = value;
+                optEl.textContent = label;
                 input.appendChild(optEl);
             });
         } else if (fieldType === 'radio') {
