@@ -87,40 +87,7 @@ function populateDependsOnFields(currentStep, excludeFieldId) {
   const dropdown = document.getElementById('fpDependsOnField');
   dropdown.innerHTML = '<option value="">Select field...</option>';
 
-  const staticFieldsMap = {
-    1: [
-      { key: 'FullName', label: 'Full Name' },
-      { key: 'Age', label: 'Age' },
-      { key: 'Gender', label: 'Gender' },
-      { key: 'DateOfBirth', label: 'Date of Birth' }
-    ],
-    2: [
-      { key: 'HasAllergies', label: 'Has Allergies' },
-      { key: 'AllergyDescription', label: 'Allergy Description' },
-      { key: 'CurrentMedication', label: 'Current Medication' },
-      { key: 'HeightCm', label: 'Height (cm)' },
-      { key: 'WeightKg', label: 'Weight (kg)' }
-    ],
-    3: [
-      { key: 'ContactName', label: 'Contact Name' },
-      { key: 'Relationship', label: 'Relationship' },
-      { key: 'PhoneNumber', label: 'Phone Number' },
-      { key: 'HasAlternativeContact', label: 'Has Alternative Contact' },
-      { key: 'AltContactName', label: 'Alt Contact Name' },
-      { key: 'AltPhoneNumber', label: 'Alt Phone Number' }
-    ]
-  };
-
   for (let step = 1; step <= currentStep; step++) {
-    if (staticFieldsMap[step]) {
-      staticFieldsMap[step].forEach(field => {
-        const option = document.createElement('option');
-        option.value = field.key;
-        option.textContent = `${field.label} (Step ${step})`;
-        dropdown.appendChild(option);
-      });
-    }
-
     additionalFieldsData
       .filter(f => f.Step === step && f.FieldId !== excludeFieldId)
       .forEach(f => {

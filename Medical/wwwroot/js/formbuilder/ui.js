@@ -538,15 +538,17 @@ function refreshDynamicFieldPreview(fieldId, updatedData) {
     if (updatedData.OptionsJson) {
       try {
         const options = JSON.parse(updatedData.OptionsJson);
-        options.forEach(opt => {
-          const option = document.createElement('option');
-          option.value = opt.Value || opt.value;
-          option.textContent = opt.Label || opt.label;
-          if (opt.IsDefault || opt.isDefault) {
-            option.selected = true;
-          }
-          newInput.appendChild(option);
-        });
+        if (Array.isArray(options)) {
+          options.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt.Value || opt.value || opt;
+            option.textContent = opt.Label || opt.label || opt;
+            if (opt.IsDefault || opt.isDefault) {
+              option.selected = true;
+            }
+            newInput.appendChild(option);
+          });
+        }
       } catch (e) {
         console.error('Error parsing options for preview:', e);
       }
@@ -621,20 +623,8 @@ function updateConditionalValueInput(dependsOnFieldId, currentValue = '') {
     // Try dynamic fields
     dependentField = additionalFieldsData.find(f => String(f.FieldId) === String(dependsOnFieldId));
     
-    // Static fields from formbuilder.bundle.js
-    const staticFields = [
-        { key: 'FullName', type: 'text' },
-        { key: 'Age', type: 'number' },
-        { key: 'Gender', type: 'radio', options: ['Male', 'Female', 'Other'] },
-        { key: 'DateOfBirth', type: 'date' },
-        { key: 'HasAllergies', type: 'select', options: ['Yes', 'No'] },
-        { key: 'HasAlternativeContact', type: 'select', options: ['Yes', 'No'] }
-    ];
-    
-    const staticMatch = staticFields.find(f => f.key === dependsOnFieldId);
-
-    const useDropdown = (dependentField && (dependentField.FieldType === 'select' || dependentField.FieldType === 'radio')) || 
-                        (staticMatch && (staticMatch.type === 'select' || staticMatch.type === 'radio'));
+    const fieldType = (dependentField?.FieldType || '').toLowerCase();
+    const useDropdown = (fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox');
 
     let currentInput = document.getElementById('fpShowWhenValue');
     
@@ -650,16 +640,21 @@ function updateConditionalValueInput(dependsOnFieldId, currentValue = '') {
         
         // Populate options
         let options = [];
-        if (dependentField && dependentField.OptionsJson) {
+        if (fieldType === 'checkbox') {
+            options = [
+                { label: 'Yes', value: 'true' },
+                { label: 'No', value: 'false' }
+            ];
+        } else if (dependentField && dependentField.OptionsJson) {
             try {
                 const parsed = JSON.parse(dependentField.OptionsJson);
-                options = parsed.map(o => ({ 
-                  label: o.Label || o.label || o, 
-                  value: o.Value || o.value || o.Label || o.label || o 
-                }));
-            } catch (e) { console.error(e); }
-        } else if (staticMatch && staticMatch.options) {
-            options = staticMatch.options.map(o => ({ label: o, value: o }));
+                if (Array.isArray(parsed)) {
+                    options = parsed.map(o => ({ 
+                      label: o.Label || o.label || o.Value || o.value || o, 
+                      value: o.Value || o.value || o.Label || o.label || o 
+                    }));
+                }
+            } catch (e) { console.error('Error parsing OptionsJson in updateConditionalValueInput:', e); }
         }
         
         currentInput.innerHTML = '<option value="">Select value...</option>';
@@ -667,7 +662,7 @@ function updateConditionalValueInput(dependsOnFieldId, currentValue = '') {
             const option = document.createElement('option');
             option.value = opt.value;
             option.textContent = opt.label;
-            if (String(opt.value) === String(currentValue)) {
+            if (String(opt.value).toLowerCase() === String(currentValue).toLowerCase()) {
                 option.selected = true;
             }
             currentInput.appendChild(option);

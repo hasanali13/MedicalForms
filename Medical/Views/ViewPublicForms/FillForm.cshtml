@@ -753,7 +753,15 @@
             input = document.createElement('select');
             input.className = 'form-control form-select';
 
-            const options = field.OptionsJson ? JSON.parse(field.OptionsJson) : [];
+            let options = [];
+            if (field.OptionsJson) {
+                try {
+                    const parsed = JSON.parse(field.OptionsJson);
+                    options = Array.isArray(parsed) ? parsed : [];
+                } catch (e) {
+                    console.error('Error parsing OptionsJson for select:', e);
+                }
+            }
             
             if (!isRequired) {
                 const emptyOpt = document.createElement('option');
@@ -763,18 +771,26 @@
             }
             
             options.forEach(opt => {
-                const label = opt.Label || opt.label || opt;
-                const value = opt.Value || opt.value || label;
+                const optLabel = opt.Label || opt.label || opt;
+                const optValue = opt.Value || opt.value || optLabel;
                 const optEl = document.createElement('option');
-                optEl.value = value;
-                optEl.textContent = label;
+                optEl.value = optValue;
+                optEl.textContent = optLabel;
                 input.appendChild(optEl);
             });
         } else if (fieldType === 'radio') {
             const radioContainer = document.createElement('div');
             radioContainer.className = 'radio-group';
 
-            const options = field.OptionsJson ? JSON.parse(field.OptionsJson) : [];
+            let options = [];
+            if (field.OptionsJson) {
+                try {
+                    const parsed = JSON.parse(field.OptionsJson);
+                    options = Array.isArray(parsed) ? parsed : [];
+                } catch (e) {
+                    console.error('Error parsing OptionsJson for radio:', e);
+                }
+            }
             
             if (options.length > 0) {
                 options.forEach((opt, index) => {
@@ -938,7 +954,15 @@
                 const logicJson = fieldContainer.getAttribute('data-conditional-logic');
                 if (!logicJson) return;
                 
-                const logic = JSON.parse(logicJson);
+                let logic = null;
+                try {
+                    logic = JSON.parse(logicJson);
+                } catch (e) {
+                    console.error('Invalid logic JSON:', logicJson, e);
+                    return;
+                }
+                
+                if (!logic) return;
                 
                 // Support multiple property name variations
                 const parentFieldId = logic.parentFieldId || logic.ParentFieldId || logic.DependsOnFieldKey || logic.dependsOnFieldKey;
