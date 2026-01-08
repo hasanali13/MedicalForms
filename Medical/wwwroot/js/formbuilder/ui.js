@@ -441,6 +441,8 @@ function selectField(fieldData) {
   document.getElementById('fpRequired').checked = fieldData.isRequired || false;
   document.getElementById('fpConditional').checked = fieldData.isConditional || false;
 
+  populateDependsOnFields(fieldData.step || 1, fieldData.fieldId);
+
   const conditionalConfig = document.getElementById('conditionalConfig');
   if (fieldData.isConditional) {
     conditionalConfig.classList.add('show');
@@ -460,8 +462,6 @@ function selectField(fieldData) {
   } else {
     conditionalConfig.classList.remove('show');
   }
-
-  populateDependsOnFields(fieldData.step || 1, fieldData.fieldId);
 
   if (fieldData.fieldType === 'static') {
     document.getElementById('fpType').disabled = true;

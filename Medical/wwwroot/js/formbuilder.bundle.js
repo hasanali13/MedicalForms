@@ -792,12 +792,20 @@ function selectField(fieldData) {
   document.getElementById('fpRequired').checked = fieldData.isRequired || false;
   document.getElementById('fpConditional').checked = fieldData.isConditional || false;
 
+  populateDependsOnFields(fieldData.step || 1, fieldData.fieldId);
+
   const conditionalConfig = document.getElementById('conditionalConfig');
   if (fieldData.isConditional) {
     conditionalConfig.classList.add('show');
     if (fieldData.conditionalLogic) {
-      document.getElementById('fpDependsOnField').value = fieldData.conditionalLogic.dependsOnFieldKey || '';
-      document.getElementById('fpShowWhenValue').value = fieldData.conditionalLogic.showWhenValue || '';
+      // Fix: Handle both PascalCase (from server) and camelCase (from client)
+      const dependsOn = fieldData.conditionalLogic.DependsOnFieldKey || fieldData.conditionalLogic.dependsOnFieldKey || '';
+      const showWhen = fieldData.conditionalLogic.ShowWhenValue || fieldData.conditionalLogic.showWhenValue || '';
+      
+      document.getElementById('fpDependsOnField').value = dependsOn;
+      
+      // Update the value input type (text vs dropdown) and set value
+      updateConditionalValueInput(dependsOn, showWhen);
     } else {
       document.getElementById('fpDependsOnField').value = '';
       document.getElementById('fpShowWhenValue').value = '';
@@ -805,8 +813,6 @@ function selectField(fieldData) {
   } else {
     conditionalConfig.classList.remove('show');
   }
-
-  populateDependsOnFields(fieldData.step || 1, fieldData.fieldId);
 
   if (fieldData.fieldType === 'static') {
     document.getElementById('fpType').disabled = true;
