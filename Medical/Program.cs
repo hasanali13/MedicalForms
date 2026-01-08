@@ -58,7 +58,6 @@ using (var scope = app.Services.CreateScope())
         var context = services.GetRequiredService<MedicalContext>();
         // This will create the database if it doesn't exist
         context.Database.EnsureCreated();
-        context.Database.EnsureCreated();
         
         // SELF-HEALING: Add missing columns (Migration workaround)
         try 
