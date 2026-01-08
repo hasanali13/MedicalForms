@@ -823,95 +823,6 @@ function highlightPreviewField(fieldData) {
   }
 }
 
-function updateConditionalValueInput(dependsOnFieldId, currentValue = '') {
-    const valueInput = document.getElementById('fpShowWhenValue');
-    if (!valueInput) return;
-
-    // Find the dependent field data
-    let dependentField = null;
-    
-    // Try dynamic fields
-    dependentField = additionalFieldsData.find(f => String(f.FieldId) === String(dependsOnFieldId));
-    
-    // Static fields from formbuilder.bundle.js
-    const staticFields = [
-        { key: 'FullName', type: 'text' },
-        { key: 'Age', type: 'number' },
-        { key: 'Gender', type: 'radio', options: ['Male', 'Female', 'Other'] },
-        { key: 'DateOfBirth', type: 'date' },
-        { key: 'HasAllergies', type: 'select', options: ['Yes', 'No'] },
-        { key: 'AllergyDescription', type: 'text' },
-        { key: 'CurrentMedication', type: 'text' },
-        { key: 'HeightCm', type: 'number' },
-        { key: 'WeightKg', type: 'number' },
-        { key: 'ContactName', type: 'text' },
-        { key: 'Relationship', type: 'text' },
-        { key: 'PhoneNumber', type: 'tel' },
-        { key: 'HasAlternativeContact', type: 'select', options: ['Yes', 'No'] },
-        { key: 'AltContactName', type: 'text' },
-        { key: 'AltPhoneNumber', type: 'tel' }
-    ];
-    
-    const staticMatch = staticFields.find(f => f.key === dependsOnFieldId);
-
-    const useDropdown = (dependentField && (dependentField.FieldType === 'select' || dependentField.FieldType === 'radio')) || 
-                        (staticMatch && (staticMatch.type === 'select' || staticMatch.type === 'radio'));
-
-    let currentInput = document.getElementById('fpShowWhenValue');
-    
-    if (useDropdown) {
-        // Create or ensure select element
-        if (currentInput.tagName !== 'SELECT') {
-            const select = document.createElement('select');
-            select.id = 'fpShowWhenValue';
-            select.className = 'fp-select';
-            currentInput.replaceWith(select);
-            currentInput = select;
-        }
-        
-        // Populate options
-        let options = [];
-        if (dependentField && (dependentField.OptionsJson || dependentField.optionsJson)) {
-            try {
-                const json = dependentField.OptionsJson || dependentField.optionsJson;
-                const parsed = JSON.parse(json);
-                options = parsed.map(o => ({ 
-                  label: o.Label || o.label || o, 
-                  value: o.Value || o.value || o.Label || o.label || o 
-                }));
-            } catch (e) { console.error(e); }
-        } else if (staticMatch && staticMatch.options) {
-            options = staticMatch.options.map(o => ({ label: o, value: o }));
-        }
-        
-        currentInput.innerHTML = '<option value="">Select value...</option>';
-        options.forEach(opt => {
-            const option = document.createElement('option');
-            option.value = opt.value;
-            option.textContent = opt.label;
-            if (String(opt.value) === String(currentValue)) {
-                option.selected = true;
-            }
-            currentInput.appendChild(option);
-        });
-
-        // Ensure the select value is actually set
-        if (currentValue) currentInput.value = currentValue;
-    } else {
-        // Create or ensure text input
-        if (currentInput.tagName !== 'INPUT') {
-            const input = document.createElement('input');
-            input.id = 'fpShowWhenValue';
-            input.type = 'text';
-            input.className = 'fp-input';
-            input.placeholder = 'e.g., Yes, true, Male';
-            currentInput.replaceWith(input);
-            currentInput = input;
-        }
-        currentInput.value = currentValue;
-    }
-}
-
 function selectField(fieldData) {
   clearFieldSelection();
   selectedFieldData = fieldData;
@@ -930,14 +841,8 @@ function selectField(fieldData) {
   if (fieldData.isConditional) {
     conditionalConfig.classList.add('show');
     if (fieldData.conditionalLogic) {
-      // Fix: Handle both PascalCase (from server) and camelCase (from client)
-      const dependsOn = fieldData.conditionalLogic.DependsOnFieldKey || fieldData.conditionalLogic.dependsOnFieldKey || '';
-      const showWhen = fieldData.conditionalLogic.ShowWhenValue || fieldData.conditionalLogic.showWhenValue || '';
-      
-      document.getElementById('fpDependsOnField').value = dependsOn;
-      
-      // Update the value input type (text vs dropdown) and set value
-      updateConditionalValueInput(dependsOn, showWhen);
+      document.getElementById('fpDependsOnField').value = fieldData.conditionalLogic.dependsOnFieldKey || '';
+      document.getElementById('fpShowWhenValue').value = fieldData.conditionalLogic.showWhenValue || '';
     } else {
       document.getElementById('fpDependsOnField').value = '';
       document.getElementById('fpShowWhenValue').value = '';
@@ -1740,14 +1645,6 @@ function bindFormBuilderEvents() {
       const list = document.getElementById('fpOptionsList');
       const newRow = createOptionEditorRow('', false, list.children.length);
       list.appendChild(newRow);
-    });
-  }
-
-  // Conditional field changes
-  const fpDependsOnField = document.getElementById('fpDependsOnField');
-  if (fpDependsOnField) {
-    fpDependsOnField.addEventListener('change', function () {
-      updateConditionalValueInput(this.value);
     });
   }
 }
