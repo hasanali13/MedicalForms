@@ -5,7 +5,7 @@
     ViewBag.ActiveMenu = "Submissions";
     
     var configFields = ViewBag.ConfigFields as List<Medical.Models.AdditionalField> ?? new List<Medical.Models.AdditionalField>();
-    var customSteps = ViewBag.CustomSteps as List<Medical.Models.AdditionalField> ?? new List<Medical.Models.AdditionalField>();
+    var formSteps = ViewBag.FormSteps as List<Medical.Models.FormStep> ?? new List<Medical.Models.FormStep>();
 }
 
 <!-- Top Bar -->
@@ -82,9 +82,9 @@
                 </div>
             </div>
             <div class="stat-card-body">
-                <div class="stat-card-value" style="color: #10B981;">@Model.Count(m => !string.IsNullOrEmpty(m.FullName))</div>
-                <div class="stat-card-label">Identified Participants</div>
-                <div class="stat-card-description">With full name provided</div>
+                <div class="stat-card-value" style="color: #10B981;">@Model.Count(m => !string.IsNullOrEmpty(m.FormDataJson))</div>
+                <div class="stat-card-label">Completed Forms</div>
+                <div class="stat-card-description">With form data provided</div>
             </div>
         </div>
 
@@ -160,16 +160,23 @@
                                         <div class="submission-user-avatar">
                                             @{
                                                 string initials = "A";
-                                                if (!string.IsNullOrWhiteSpace(item.FullName))
+                                                string participantName = "Anonymous Participant";
+                                                
+                                                if (item.FormData != null && item.FormData.Any())
                                                 {
-                                                    var parts = item.FullName.Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
-                                                    if (parts.Length > 0)
+                                                    var nameField = item.FormData.FirstOrDefault(f => f.Key.ToLower().Contains("name"));
+                                                    if (!string.IsNullOrWhiteSpace(nameField.Value))
                                                     {
-                                                        initials = string.Concat(
-                                                            parts.Take(Math.Min(2, parts.Length))
-                                                                .Where(p => !string.IsNullOrEmpty(p))
-                                                                .Select(p => p[0].ToString().ToUpper())
-                                                        );
+                                                        participantName = nameField.Value;
+                                                        var parts = participantName.Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
+                                                        if (parts.Length > 0)
+                                                        {
+                                                            initials = string.Concat(
+                                                                parts.Take(Math.Min(2, parts.Length))
+                                                                    .Where(p => !string.IsNullOrEmpty(p))
+                                                                    .Select(p => p[0].ToString().ToUpper())
+                                                            );
+                                                        }
                                                     }
                                                 }
                                             }
@@ -177,7 +184,7 @@
                                         </div>
                                         <div class="submission-user-info">
                                             <div class="submission-user-name">
-                                                @(item.FullName ?? "Anonymous Participant")
+                                                @participantName
                                             </div>
                                             <div class="submission-user-id">
                                                 ID: @item.ViewPublicFormId.ToString().Substring(0, 8)
@@ -188,21 +195,26 @@
 
                                 <!-- Contact Info -->
                                 <td data-label="Contact">
-                                    @if (!string.IsNullOrEmpty(item.ContactName))
+                                    @{
+                                        var contactName = item.FormData?.FirstOrDefault(f => f.Key.ToLower().Contains("contact") && f.Key.ToLower().Contains("name")).Value;
+                                        var relationship = item.FormData?.FirstOrDefault(f => f.Key.ToLower().Contains("relationship")).Value;
+                                        var phoneNumber = item.FormData?.FirstOrDefault(f => f.Key.ToLower().Contains("phone")).Value;
+                                    }
+                                    @if (!string.IsNullOrEmpty(contactName))
                                     {
                                         <div style="margin-bottom: 4px;">
-                                            <strong style="color: var(--origin-text-primary); font-size: var(--font-size-sm);">@item.ContactName</strong>
+                                            <strong style="color: var(--origin-text-primary); font-size: var(--font-size-sm);">@contactName</strong>
                                         </div>
-                                        @if (!string.IsNullOrEmpty(item.Relationship))
+                                        @if (!string.IsNullOrEmpty(relationship))
                                         {
                                             <div style="font-size: var(--font-size-xs); color: var(--origin-text-muted);">
-                                                <i class="fas fa-user-friends"></i> @item.Relationship
+                                                <i class="fas fa-user-friends"></i> @relationship
                                             </div>
                                         }
-                                        @if (!string.IsNullOrEmpty(item.PhoneNumber))
+                                        @if (!string.IsNullOrEmpty(phoneNumber))
                                         {
                                             <div style="font-size: var(--font-size-xs); color: var(--origin-text-secondary); margin-top: 2px;">
-                                                <i class="fas fa-phone"></i> @item.PhoneNumber
+                                                <i class="fas fa-phone"></i> @phoneNumber
                                             </div>
                                         }
                                     }
@@ -215,23 +227,30 @@
                                 <!-- Health Data -->
                                 <td data-label="Health">
                                     <div class="d-flex flex-column gap-1" style="font-size: var(--font-size-xs);">
-                                        @if (item.Age.HasValue)
+                                        @{
+                                            var age = item.FormData?.FirstOrDefault(f => f.Key.ToLower() == "age").Value;
+                                            var height = item.FormData?.FirstOrDefault(f => f.Key.ToLower().Contains("height")).Value;
+                                            var weight = item.FormData?.FirstOrDefault(f => f.Key.ToLower().Contains("weight")).Value;
+                                            var hasAllergies = item.FormData?.FirstOrDefault(f => f.Key.ToLower().Contains("allergies")).Value;
+                                        }
+                                        @if (!string.IsNullOrEmpty(age))
                                         {
                                             <div style="color: var(--origin-text-secondary);">
-                                                <i class="fas fa-birthday-cake"></i> @item.Age years old
+                                                <i class="fas fa-birthday-cake"></i> @age years old
                                             </div>
                                         }
-                                        @if (item.HeightCm.HasValue && item.WeightKg.HasValue)
+                                        @if (!string.IsNullOrEmpty(height) && !string.IsNullOrEmpty(weight))
                                         {
                                             <div style="color: var(--origin-text-secondary);">
-                                                <i class="fas fa-weight"></i> @item.HeightCm.Value.ToString("0.#") cm / @item.WeightKg.Value.ToString("0.#") kg
+                                                <i class="fas fa-weight"></i> @height cm / @weight kg
                                             </div>
                                         }
-                                        @if (item.HasAllergies.HasValue)
+                                        @if (!string.IsNullOrEmpty(hasAllergies))
                                         {
-                                            <div style="color: @(item.HasAllergies.Value ? "var(--origin-error)" : "var(--origin-success)");">
-                                                <i class="fas @(item.HasAllergies.Value ? "fa-exclamation-triangle" : "fa-check-circle")"></i>
-                                                @(item.HasAllergies.Value ? "Has Allergies" : "No Allergies")
+                                            var allergiesValue = hasAllergies.ToLower() == "true" || hasAllergies.ToLower() == "yes";
+                                            <div style="color: @(allergiesValue ? "var(--origin-error)" : "var(--origin-success)");">
+                                                <i class="fas @(allergiesValue ? "fa-exclamation-triangle" : "fa-check-circle")"></i>
+                                                @(allergiesValue ? "Has Allergies" : "No Allergies")
                                             </div>
                                         }
                                     </div>
@@ -280,27 +299,17 @@
                                                     }
                                                 }
                                                 
+                                                
                                                 @foreach (var stepGroup in fieldsByStep.OrderBy(g => g.Key))
                                                 {
                                                     var stepNumber = stepGroup.Key;
-                                                    var stepName = stepNumber <= 3 ? $"Step {stepNumber}" : "";
+                                                    var stepData = formSteps.FirstOrDefault(s => s.Order == stepNumber);
+                                                    var stepName = stepData?.Name ?? $"Step {stepNumber}";
                                                     
-                                                    if (stepNumber > 3)
-                                                    {
-                                                        var customStep = customSteps.FirstOrDefault(s => s.Step == stepNumber);
-                                                        if (customStep != null)
-                                                        {
-                                                            stepName = customStep.DisplayName;
-                                                        }
-                                                    }
-                                                    
-                                                    if (!string.IsNullOrEmpty(stepName))
-                                                    {
-                                                        <span class="field-tag">
-                                                            <span class="step-badge-tag">@stepName</span>
-                                                            @stepGroup.Value field@(stepGroup.Value != 1 ? "s" : "")
-                                                        </span>
-                                                    }
+                                                    <span class="field-tag">
+                                                        <span class="step-badge-tag">@stepName</span>
+                                                        @stepGroup.Value field@(stepGroup.Value != 1 ? "s" : "")
+                                                    </span>
                                                 }
                                             </div>
                                         </div>

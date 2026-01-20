@@ -29,8 +29,8 @@ namespace Medical.Helpers
                     RefreshCache(context);
                 }
 
-                // Return cached labels or default if null
-                return _cachedLabels ?? new Dictionary<string, string>(ViewPublicForm.DefaultLabels);
+                // Return cached labels or empty dictionary if null
+                return _cachedLabels ?? new Dictionary<string, string>();
             }
         }
 
@@ -53,7 +53,7 @@ namespace Medical.Helpers
             {
                 // Find or create configuration form
                 var configForm = context.ViewPublicForm
-                    .Where(f => f.FullName == null) // Configuration forms have no FullName
+                    .Where(f => f.IsConfig) // Configuration forms have IsConfig = true
                     .OrderByDescending(f => f.CreatedAt)
                     .FirstOrDefault();
 
@@ -64,7 +64,8 @@ namespace Medical.Helpers
                         ViewPublicFormId = Guid.NewGuid(),
                         CreatedAt = DateTime.UtcNow,
                         FieldLabelsJson = JsonConvert.SerializeObject(newLabels),
-                        FormVersion = 1
+                        FormVersion = 1,
+                        IsConfig = true
                     };
                     context.ViewPublicForm.Add(configForm);
                 }
@@ -93,9 +94,9 @@ namespace Medical.Helpers
         /// </summary>
         private static void RefreshCache(MedicalContext context)
         {
-            // Try to get configuration form (forms without FullName are config forms)
+            // Try to get configuration form (forms with IsConfig = true are config forms)
             var configForm = context.ViewPublicForm
-                .Where(f => f.FullName == null)
+                .Where(f => f.IsConfig)
                 .OrderByDescending(f => f.CreatedAt)
                 .FirstOrDefault();
 
@@ -108,12 +109,12 @@ namespace Medical.Helpers
                 }
                 catch
                 {
-                    _cachedLabels = new Dictionary<string, string>(ViewPublicForm.DefaultLabels);
+                    _cachedLabels = new Dictionary<string, string>();
                 }
             }
             else
             {
-                _cachedLabels = new Dictionary<string, string>(ViewPublicForm.DefaultLabels);
+                _cachedLabels = new Dictionary<string, string>();
             }
 
             _lastCacheUpdate = DateTime.UtcNow;

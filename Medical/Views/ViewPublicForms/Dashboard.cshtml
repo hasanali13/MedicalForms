@@ -197,12 +197,22 @@
                     <div class="latest-submission-card">
                         <div class="submission-avatar">
                             @{
-                                var initial = Model.LastSubmission.FullName?.Substring(0, 1).ToUpper() ?? "A";
+                                var initial = "A";
+                                var participantName = "Anonymous";
+                                if (Model.LastSubmission.FormData != null && Model.LastSubmission.FormData.Any())
+                                {
+                                    var nameField = Model.LastSubmission.FormData.FirstOrDefault(f => f.Key.ToLower().Contains("name"));
+                                    if (!string.IsNullOrEmpty(nameField.Value))
+                                    {
+                                        participantName = nameField.Value;
+                                        initial = participantName.Substring(0, 1).ToUpper();
+                                    }
+                                }
                             }
                             @initial
                         </div>
                         <div class="submission-details">
-                            <h4 class="submission-name">@(Model.LastSubmission.FullName ?? "Anonymous")</h4>
+                            <h4 class="submission-name">@participantName</h4>
                             <div class="submission-meta-grid">
                                 <div class="submission-meta">
                                     <i class="fas fa-calendar"></i>
@@ -301,12 +311,22 @@
                                         <div class="participant-cell">
                                             <div class="participant-avatar">
                                                 @{
-                                                    var participantInitial = item.FullName?.Substring(0, 1).ToUpper() ?? "A";
+                                                    var participantInitial = "A";
+                                                    var participantName = "Anonymous";
+                                                    if (item.FormData != null && item.FormData.Any())
+                                                    {
+                                                        var nameField = item.FormData.FirstOrDefault(f => f.Key.ToLower().Contains("name"));
+                                                        if (!string.IsNullOrEmpty(nameField.Value))
+                                                        {
+                                                            participantName = nameField.Value;
+                                                            participantInitial = participantName.Substring(0, 1).ToUpper();
+                                                        }
+                                                    }
                                                 }
                                                 @participantInitial
                                             </div>
                                             <div class="participant-info">
-                                                <div class="participant-name">@(item.FullName ?? "Anonymous")</div>
+                                                <div class="participant-name">@participantName</div>
                                                 <div class="participant-id">ID: @item.ViewPublicFormId.ToString().Substring(0, 8)...</div>
                                             </div>
                                         </div>

@@ -559,10 +559,10 @@ namespace Medical.Controllers
 
                 steps.Add(newStep);
 
-                // Normalize ordering (1..n)
+                // Normalize ordering (0..n-1) - 0-based indexing
                 steps = steps.OrderBy(s => s.Order).ToList();
                 for (var i = 0; i < steps.Count; i++)
-                    steps[i].Order = i + 1;
+                    steps[i].Order = i;
 
                 configForm.FormSchemaJson = Medical.Helpers.FormSchemaStepsHelper.WriteSteps(configForm.FormSchemaJson, steps);
                 configForm.FormVersion++;
@@ -614,7 +614,7 @@ namespace Medical.Controllers
                 // Remove from steps
                 steps = steps.Where(s => s.Id != target.Id).OrderBy(s => s.Order).ToList();
                 for (var i = 0; i < steps.Count; i++)
-                    steps[i].Order = i + 1;
+                    steps[i].Order = i; // 0-based indexing
 
                 configForm.FormSchemaJson = Medical.Helpers.FormSchemaStepsHelper.WriteSteps(configForm.FormSchemaJson, steps);
 
@@ -664,13 +664,13 @@ namespace Medical.Controllers
 
                 st.Name = request.StepName.Trim();
 
-                if (request.StepOrder.HasValue && request.StepOrder.Value > 0)
+                if (request.StepOrder.HasValue && request.StepOrder.Value >= 0) // Allow 0
                     st.Order = request.StepOrder.Value;
 
-                // Normalize orders
+                // Normalize orders (0-based indexing)
                 steps = steps.OrderBy(s => s.Order).ToList();
                 for (var i = 0; i < steps.Count; i++)
-                    steps[i].Order = i + 1;
+                    steps[i].Order = i;
 
                 configForm.FormSchemaJson = Medical.Helpers.FormSchemaStepsHelper.WriteSteps(configForm.FormSchemaJson, steps);
                 configForm.FormVersion++;
@@ -918,9 +918,22 @@ namespace Medical.Controllers
                 .ThenBy(f => f.DisplayOrder)
                 .ToList() ?? new List<AdditionalField>();
             
-            // Pass configuration fields and custom steps to view
+            // Pass configuration fields to view
             ViewBag.ConfigFields = allFields.Where(f => f.FieldType != "step").ToList();
-            ViewBag.CustomSteps = allFields.Where(f => f.FieldType == "step").ToList();
+            
+            // Get FormSteps from FormSchemaJson (dynamic steps)
+            try
+            {
+                var formSteps = Medical.Helpers.FormSchemaStepsHelper.ReadSteps(configForm.FormSchemaJson)
+                    .Where(s => s.IsActive)
+                    .OrderBy(s => s.Order)
+                    .ToList();
+                ViewBag.FormSteps = formSteps;
+            }
+            catch
+            {
+                ViewBag.FormSteps = new List<Medical.Models.FormStep>();
+            }
             
             var query = _context.ViewPublicForm
                 .Where(f => f.IsConfig != true && f.IsDeleted != true)
@@ -1057,8 +1070,8 @@ namespace Medical.Controllers
 
             if (configForm == null)
             {
-                // Seed default steps if no config exists
-                var seeded = FormSchemaStepsHelper.EnsureSeededDefaultSteps(null);
+                // Create minimal config with one generic step
+                var seeded = FormSchemaStepsHelper.EnsureMinimumSteps(null);
                 
                 configForm = new ViewPublicForm
                 {
@@ -1072,18 +1085,6 @@ namespace Medical.Controllers
                 };
                 _context.ViewPublicForm.Add(configForm);
                 _context.SaveChanges();
-            }
-            else
-            {
-                // Always check for and restore missing default steps
-                var check = FormSchemaStepsHelper.EnsureSeededDefaultSteps(configForm.FormSchemaJson);
-                if (check.UpdatedJson != configForm.FormSchemaJson)
-                {
-                    configForm.FormSchemaJson = check.UpdatedJson;
-                    configForm.FormVersion++;
-                    _context.ViewPublicForm.Update(configForm);
-                    _context.SaveChanges();
-                }
             }
 
             return configForm;
@@ -1133,33 +1134,6 @@ namespace Medical.Controllers
                 if (updated > 0) _context.SaveChanges();
 
                 return Json(new { success = true, updated });
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, message = ex.Message });
-            }
-        }
-
-        // Maintenance: Re-seed default steps if missing
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public IActionResult ReseedDefaultSteps()
-        {
-            try
-            {
-                var configForm = GetOrCreateConfigForm();
-                
-                // Force re-seed of default steps
-                var seeded = FormSchemaStepsHelper.EnsureSeededDefaultSteps(null);
-                
-                configForm.FormSchemaJson = seeded.UpdatedJson;
-                configForm.FormVersion++;
-                configForm.CreatedAt = DateTime.UtcNow;
-                
-                _context.ViewPublicForm.Update(configForm);
-                _context.SaveChanges();
-
-                return Json(new { success = true, message = "Default steps re-seeded successfully!", steps = seeded.Steps.Count });
             }
             catch (Exception ex)
             {
@@ -1226,7 +1200,7 @@ namespace Medical.Controllers
     {
         public string StepName { get; set; } = string.Empty;
         public string? StepDescription { get; set; }
-        public int StepOrder { get; set; } = 4; // Default after step 3
+        public int StepOrder { get; set; } = 0; // Default to first step (0-based indexing)
         public string? StepIcon { get; set; } = "📋";
     }
 

@@ -33,23 +33,6 @@ namespace Medical.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public int FormVersion { get; set; } = 1;
 
-        // Legacy/deprecated columns (kept for backward compatibility, nullable)
-        public string? FullName { get; set; }
-        public int? Age { get; set; }
-        public string? Gender { get; set; }
-        public DateTime? DateOfBirth { get; set; }
-        public bool? HasAllergies { get; set; }
-        public string? AllergyDescription { get; set; }
-        public string? CurrentMedication { get; set; }
-        public decimal? HeightCm { get; set; }
-        public decimal? WeightKg { get; set; }
-        public string? ContactName { get; set; }
-        public string? Relationship { get; set; }
-        public string? PhoneNumber { get; set; }
-        public bool? HasAlternativeContact { get; set; }
-        public string? AltContactName { get; set; }
-        public string? AltPhoneNumber { get; set; }
-
         [NotMapped]
         public Dictionary<string, string> FormData
         {
@@ -77,16 +60,16 @@ namespace Medical.Models
             get
             {
                 if (string.IsNullOrEmpty(FieldLabelsJson))
-                    return new Dictionary<string, string>(DefaultLabels);
+                    return new Dictionary<string, string>();
 
                 try
                 {
                     return JsonConvert.DeserializeObject<Dictionary<string, string>>(FieldLabelsJson)
-                        ?? new Dictionary<string, string>(DefaultLabels);
+                        ?? new Dictionary<string, string>();
                 }
                 catch
                 {
-                    return new Dictionary<string, string>(DefaultLabels);
+                    return new Dictionary<string, string>();
                 }
             }
             set => FieldLabelsJson = JsonConvert.SerializeObject(value);
@@ -122,25 +105,5 @@ namespace Medical.Models
 
             set => AdditionalFieldsJson = JsonConvert.SerializeObject(value);
         }
-
-        [NotMapped]
-        public static Dictionary<string, string> DefaultLabels => new()
-        {
-            { "FullName", "Full Name" },
-            { "Age", "Age" },
-            { "Gender", "Gender" },
-            { "DateOfBirth", "Date of Birth" },
-            { "HasAllergies", "Do you have allergies?" },
-            { "AllergyDescription", "Allergy Description" },
-            { "CurrentMedication", "Current Medication" },
-            { "HeightCm", "Height (cm)" },
-            { "WeightKg", "Weight (kg)" },
-            { "ContactName", "Contact Name" },
-            { "Relationship", "Relationship" },
-            { "PhoneNumber", "Phone Number" },
-            { "HasAlternativeContact", "Alternative Contact?" },
-            { "AltContactName", "Alt Contact Name" },
-            { "AltPhoneNumber", "Alt Phone Number" }
-        };
     }
 }

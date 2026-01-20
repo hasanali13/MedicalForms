@@ -60,7 +60,7 @@ namespace Medical.Helpers
                 .Select(s =>
                 {
                     if (s.Id == Guid.Empty) s.Id = Guid.NewGuid();
-                    if (s.Order <= 0) s.Order = 1;
+                    if (s.Order < 0) s.Order = 0; // Allow 0, but not negative
                     if (string.IsNullOrWhiteSpace(s.Name)) s.Name = $"Step {s.Order}";
                     return s;
                 })
@@ -71,55 +71,21 @@ namespace Medical.Helpers
             return root.ToString(Formatting.None);
         }
 
-        public static (string UpdatedJson, List<FormStep> Steps) EnsureSeededDefaultSteps(string? formSchemaJson)
+        /// <summary>
+        /// Ensure at least one step exists. If no steps, create a generic "Step 1".
+        /// </summary>
+        public static (string UpdatedJson, List<FormStep> Steps) EnsureMinimumSteps(string? formSchemaJson)
         {
             var steps = ReadSteps(formSchemaJson);
             
-            // If no steps exist, create all 3 defaults
+            // If no steps exist, create a single generic step
             if (steps.Count == 0)
             {
                 steps = new List<FormStep>
                 {
-                    new FormStep { Id = Guid.NewGuid(), Name = "Client Hx", Order = 1, IsActive = true },
-                    new FormStep { Id = Guid.NewGuid(), Name = "Substances", Order = 2, IsActive = true },
-                    new FormStep { Id = Guid.NewGuid(), Name = "Sex & Health", Order = 3, IsActive = true },
+                    new FormStep { Id = Guid.NewGuid(), Name = "Step 1", Order = 1, IsActive = true }
                 };
 
-                var updated = WriteSteps(formSchemaJson, steps);
-                return (updated, steps);
-            }
-            
-            // Check if any default steps are missing and add them
-            bool missingSteps = false;
-            var maxOrder = steps.Max(s => s.Order);
-            
-            // Ensure steps 1, 2, and 3 exist
-            if (!steps.Any(s => s.Order == 1))
-            {
-                steps.Add(new FormStep { Id = Guid.NewGuid(), Name = "Client Hx", Order = 1, IsActive = true });
-                missingSteps = true;
-            }
-            
-            if (!steps.Any(s => s.Order == 2))
-            {
-                steps.Add(new FormStep { Id = Guid.NewGuid(), Name = "Substances", Order = 2, IsActive = true });
-                missingSteps = true;
-            }
-            
-            if (!steps.Any(s => s.Order == 3))
-            {
-                steps.Add(new FormStep { Id = Guid.NewGuid(), Name = "Sex & Health", Order = 3, IsActive = true });
-                missingSteps = true;
-            }
-            
-            // If any steps were added, re-write the JSON
-            if (missingSteps)
-            {
-                // Re-normalize order
-                steps = steps.OrderBy(s => s.Order).ToList();
-                for (var i = 0; i < steps.Count; i++)
-                    steps[i].Order = i + 1;
-                    
                 var updated = WriteSteps(formSchemaJson, steps);
                 return (updated, steps);
             }

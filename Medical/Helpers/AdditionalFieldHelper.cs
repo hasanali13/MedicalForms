@@ -104,7 +104,7 @@ namespace Medical.Helpers
         private static ViewPublicForm GetOrCreateConfigForm(MedicalContext context)
         {
             var configForm = context.ViewPublicForm
-                .Where(f => f.FullName == null)
+                .Where(f => f.IsConfig)
                 .OrderByDescending(f => f.CreatedAt)
                 .FirstOrDefault();
 
@@ -114,7 +114,8 @@ namespace Medical.Helpers
                 {
                     ViewPublicFormId = Guid.NewGuid(),
                     CreatedAt = DateTime.UtcNow,
-                    FormVersion = 1
+                    FormVersion = 1,
+                    IsConfig = true
                 };
                 context.ViewPublicForm.Add(configForm);
             }
@@ -137,7 +138,7 @@ namespace Medical.Helpers
         private static void RefreshCache(MedicalContext context)
         {
             var configForm = context.ViewPublicForm
-                .Where(f => f.FullName == null)
+                .Where(f => f.IsConfig)
                 .OrderByDescending(f => f.CreatedAt)
                 .FirstOrDefault();
 

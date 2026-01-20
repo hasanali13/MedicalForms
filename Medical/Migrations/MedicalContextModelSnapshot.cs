@@ -17,7 +17,7 @@ namespace Medical.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.1")
+                .HasAnnotation("ProductVersion", "9.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -30,28 +30,7 @@ namespace Medical.Migrations
                     b.Property<string>("AdditionalFieldsJson")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("Age")
-                        .HasColumnType("int");
-
-                    b.Property<string>("AllergyDescription")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AltContactName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AltPhoneNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ContactName")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CurrentMedication")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("DateOfBirth")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("FieldLabelsJson")
@@ -66,37 +45,11 @@ namespace Medical.Migrations
                     b.Property<int>("FormVersion")
                         .HasColumnType("int");
 
-                    b.Property<string>("FullName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Gender")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool?>("HasAllergies")
-                        .HasColumnType("bit");
-
-                    b.Property<bool?>("HasAlternativeContact")
-                        .HasColumnType("bit");
-
-                    b.Property<decimal?>("HeightCm")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
-
                     b.Property<bool>("IsConfig")
                         .HasColumnType("bit");
 
                     b.Property<bool?>("IsDeleted")
                         .HasColumnType("bit");
-
-                    b.Property<string>("PhoneNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Relationship")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("WeightKg")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
 
                     b.HasKey("ViewPublicFormId");
 

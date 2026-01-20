@@ -6,107 +6,46 @@
 
 <h1>Delete</h1>
 
-<h3>Are you sure you want to delete this?</h3>
+<h3>Are you sure you want to delete this submission?</h3>
 <div>
     <h4>ViewPublicForm</h4>
     <hr />
     <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.FullName)
+        <dt class="col-sm-2">
+            Form ID
         </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.FullName)
+        <dd class="col-sm-10">
+            @Model.ViewPublicFormId
         </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Age)
+        <dt class="col-sm-2">
+            Created At
         </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Age)
+        <dd class="col-sm-10">
+            @Model.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")
         </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Gender)
+        <dt class="col-sm-2">
+            Form Version
         </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Gender)
+        <dd class="col-sm-10">
+            @Model.FormVersion
         </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.DateOfBirth)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.DateOfBirth)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.HasAllergies)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.HasAllergies)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.AllergyDescription)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.AllergyDescription)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.CurrentMedication)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.CurrentMedication)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.HeightCm)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.HeightCm)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.WeightKg)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.WeightKg)
-        </dd>
-      @*   <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.MedicalReport)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.MedicalReport)
-        </dd> *@
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.ContactName)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.ContactName)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Relationship)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Relationship)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.PhoneNumber)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.PhoneNumber)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.HasAlternativeContact)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.HasAlternativeContact)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.AltContactName)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.AltContactName)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.AltPhoneNumber)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.AltPhoneNumber)
-        </dd>
+        @if (Model.FormData != null && Model.FormData.Any())
+        {
+            <dt class="col-sm-2">
+                Form Data
+            </dt>
+            <dd class="col-sm-10">
+                <table class="table table-sm">
+                    @foreach (var field in Model.FormData)
+                    {
+                        <tr>
+                            <td><strong>@field.Key:</strong></td>
+                            <td>@field.Value</td>
+                        </tr>
+                    }
+                </table>
+            </dd>
+        }
     </dl>
     
     <form asp-action="Delete">
