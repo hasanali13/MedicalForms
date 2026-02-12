@@ -22,6 +22,18 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+    options.Cookie.SameSite = SameSiteMode.None;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // Required for SameSite=None
+});
+
+// COOKIE POLICY (For Iframe Support)
+builder.Services.Configure<CookiePolicyOptions>(options =>
+{
+    options.CheckConsentNeeded = context => false; // Consent not needed for essential app function
+    options.MinimumSameSitePolicy = SameSiteMode.None;
+    options.Secure = CookieSecurePolicy.Always;
 });
 
 var app = builder.Build();
@@ -30,7 +42,25 @@ var app = builder.Build();
 // MIDDLEWARE PIPELINE
 app.UseHttpsRedirection();
 app.UseStaticFiles();      // <--- REQUIRED
+app.UseCookiePolicy();     // <--- REQUIRED FOR IFRAME SUPPORT
 app.UseRouting();
+
+// IFRAME SUPPORT MIDDLEWARE
+app.Use(async (context, next) =>
+{
+    // Check if the request path starts with /ViewPublicForms/FillForm or /ViewPublicForms/Success
+    if (context.Request.Path.StartsWithSegments("/ViewPublicForms/FillForm") || 
+        context.Request.Path.StartsWithSegments("/ViewPublicForms/Success"))
+    {
+        // Remove X-Frame-Options header if present
+        context.Response.Headers.Remove("X-Frame-Options");
+        
+        // Ensure Content-Security-Policy allows framing from anywhere
+        context.Response.Headers["Content-Security-Policy"] = "frame-ancestors *;";
+    }
+    
+    await next();
+});
 
 app.UseSession();          // <--- ENABLE SESSION HERE
 

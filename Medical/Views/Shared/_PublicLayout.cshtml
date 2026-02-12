@@ -1,0 +1,55 @@
+@{
+    var active = ViewBag.ActiveMenu as string ?? string.Empty;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] - Origin Software's Medical Forms</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <!-- Origin Software's Theme (Include relevant styles) -->
+    <link rel="stylesheet" href="~/css/admin-theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/form-builder.css" asp-append-version="true" />
+    <!-- Dashboard and Submissions CSS are likely not needed for the public form, but keeping admin-theme for variables -->
+    <style>
+        /* Reset any admin-layout specific styles that might interfere */
+        body {
+            background-color: #f5f7fa; /* Match default body bg if needed */
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Public Layout - No Sidebar -->
+    <main class="public-main">
+        @RenderBody()
+    </main>
+
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <!-- Scripts -->
+    <script src="~/js/toasts.js?v=2" asp-append-version="true"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var successMsg = '@TempData["SuccessMessage"]';
+            var errorMsg = '@TempData["ErrorMessage"]';
+            if (window.__initTempDataToasts) {
+                window.__initTempDataToasts(successMsg, errorMsg);
+            }
+        });
+    </script>
+    
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

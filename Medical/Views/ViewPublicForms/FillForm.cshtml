@@ -1,6 +1,7 @@
 ﻿@model Medical.Models.ViewPublicForm
 @{
     ViewData["Title"] = "Fill Form";
+    Layout = "_PublicLayout";
     var additionalFields = ViewBag.AdditionalFields as List<Medical.Models.AdditionalField> ?? new List<Medical.Models.AdditionalField>();
     var formSteps = ViewBag.FormSteps as List<Medical.Models.FormStep> ?? new List<Medical.Models.FormStep>();
 }
