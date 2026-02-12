@@ -59,6 +59,9 @@ Wait for the containers (`medical_forms_app` and `medical_forms_db`) to start. Y
 
 12. Click **Save**.
 
+> [!IMPORTANT]
+> **Iframe Support & Security**: If you plan to embed the forms in an `<iframe>` on external websites, you **must** use HTTPS. The application is configured with `SameSite=None` cookies for cross-site support, which modern browsers only allow over secure connections.
+
 ## Troubleshooting
 
 - **Database Access**: The application automatically tries to create the database on startup. If you see connection errors in the logs, ensure the `db` container is healthy and the password in the connection string matches the `MSSQL_SA_PASSWORD`.
