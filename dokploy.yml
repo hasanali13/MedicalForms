@@ -1,0 +1,61 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Medical/Dockerfile
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__MedicalContext=Server=db;Database=MedicalDb;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=true;
+    depends_on:
+      - db
+    networks:
+      - medical-net
+      - dokploy-network
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.medical-app.rule=Host(`${APP_HOST}`)
+      - traefik.http.routers.medical-app.entrypoints=websecure
+      - traefik.http.routers.medical-app.tls.certresolver=letsencrypt
+      - traefik.http.services.medical-app.loadbalancer.server.port=8080
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}
+    volumes:
+      - mssql_data:/var/opt/mssql
+    networks:
+      - medical-net
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' -C"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db-gui:
+    image: adminer
+    restart: unless-stopped
+    environment:
+      - ADMINER_DEFAULT_SERVER=db
+    networks:
+      - medical-net
+      - dokploy-network
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.medical-adminer.rule=Host(`${ADMINER_HOST}`)
+      - traefik.http.routers.medical-adminer.entrypoints=websecure
+      - traefik.http.routers.medical-adminer.tls.certresolver=letsencrypt
+      - traefik.http.services.medical-adminer.loadbalancer.server.port=8080
+
+networks:
+  medical-net:
+    driver: bridge
+  dokploy-network:
+    external: true
+
+volumes:
+  mssql_data:
